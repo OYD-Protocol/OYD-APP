@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "WebFetch(domain:build.avax.network)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
