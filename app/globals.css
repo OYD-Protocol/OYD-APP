@@ -71,7 +71,33 @@ body {
   background: #4B5563;
 }
 
-/* Ticker animation */
+/* Simple ticker animation */
+.ticker-container {
+  width: 100%;
+  overflow: hidden;
+  padding: 1rem 0;
+}
+
+.ticker {
+  display: inline-flex;
+  gap: 3rem;
+  animation: ticker 20s linear infinite;
+}
+
+.ticker-logo {
+  height: 2rem;
+  width: auto;
+  object-fit: contain;
+  filter: grayscale(100%);
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.ticker-logo:hover {
+  filter: grayscale(0%);
+  opacity: 1;
+}
+
 @keyframes ticker {
   0% {
     transform: translateX(100%);
@@ -79,27 +105,5 @@ body {
   100% {
     transform: translateX(-100%);
   }
-}
-
-.ticker-animation {
-  animation: ticker 30s linear infinite;
-}
-
-/* Company ticker animation - seamless continuous loop */
-@keyframes company-ticker-continuous {
-  0% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.company-ticker-animation {
-  animation: company-ticker-continuous 30s linear infinite;
-}
-
-.company-ticker-animation-fast {
-  animation: company-ticker-continuous 15s linear infinite;
 }
 
