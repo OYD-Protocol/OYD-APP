@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '@/app/components/logo';
 import { useAccount } from 'wagmi';
+import { ThemeToggle } from './ThemeToggle';
 
 export default function Navbar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -74,7 +75,7 @@ export default function Navbar() {
           onClick={() => setIsMobileOpen(!isMobileOpen)}
           className="fixed top-4 left-4 z-50 lg:hidden bg-white shadow-lg border border-slate-200 text-slate-700 p-3 rounded-xl hover:bg-slate-50 transition-colors"
         >
-          :<Logo />
+          <Logo />
         </button>
       )}
 
@@ -156,7 +157,8 @@ export default function Navbar() {
 
       {/* Wallet Connect Button - Fixed Top Right */}
       <div className="fixed top-9 right-4 z-50 scale-86">
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200">
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex items-center gap-2 p-2">
+          <ThemeToggle />
           <div className="scale-100 origin-center">
             <ConnectButton
               showBalance={true}

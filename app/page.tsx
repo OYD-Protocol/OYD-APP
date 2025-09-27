@@ -1,6 +1,7 @@
 'use client';
 
 import Navbar from '@/app/components/Navbar';
+import Logo from '@/app/components/logo';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
 
@@ -30,6 +31,13 @@ export default function Page() {
           ))}
         </div>
       </div>
+
+      {/* Logo - Fixed Top Left when not connected */}
+      {!isConnected && (
+        <div className="mt-4 ml-4 z-50">
+            <Logo />
+        </div>
+      )}
 
       <Navbar />
       <main className={`transition-all duration-300 ${isConnected ? 'lg:ml-64 pt-16 lg:pt-0' : 'pt-16 lg:pt-0'}`}>
@@ -97,6 +105,22 @@ export default function Page() {
             <div className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-gradient-to-tr from-indigo-50 to-transparent opacity-50"></div>
           </div>
         </section>
+
+        {/* Company Ticker */}
+        <div className="bg-slate-100 border-y border-slate-200 py-6 overflow-hidden">
+          <div className="company-ticker-animation-fast whitespace-nowrap h-10 text-xl font-medium text-slate-700 inline-flex items-center gap-20">
+           <img src="/flipkart.webp" alt="Flipkart" height={50} width={50} />
+           <img src="/PW.png" alt="PW" height={70} width={70} />
+           <img src="/Google.webp" alt="Spotify" height={60} width={50} />
+           <img src="/Netflix.png" alt="Netflix" height={30} width={30} />
+           {/* Duplicate content for seamless loop */}
+           <img src="/flipkart.webp" alt="Flipkart" height={60} width={50} />
+           <img src="/Amazon_icon.svg" alt="Amazon" height={50} width={50} />
+           <img src="/PW.png" alt="PW" height={70} width={70} />
+           <img src="/Spotify-Icon-Logo.wine.svg" alt="Spotify" height={70} width={70} />
+           <img src="/Airbnb_logo.png" alt="Airbnb" height={50} width={50} />
+          </div>
+        </div>
 
         {/* Features Section */}
         <section className="py-20 bg-white">
