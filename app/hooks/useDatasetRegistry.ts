@@ -93,7 +93,7 @@ export function useDatasetRegistry() {
     }
   };
 
-  const getDataset = (ipfsHash: string) => {
+  const useGetDataset = (ipfsHash: string) => {
     return useReadContract({
       address: DATASET_REGISTRY_ADDRESS as `0x${string}`,
       abi: DatasetRegistryABI.abi,
@@ -102,7 +102,7 @@ export function useDatasetRegistry() {
     });
   };
 
-  const getAllDatasets = () => {
+  const useGetAllDatasets = () => {
     return useReadContract({
       address: DATASET_REGISTRY_ADDRESS as `0x${string}`,
       abi: DatasetRegistryABI.abi,
@@ -110,7 +110,7 @@ export function useDatasetRegistry() {
     });
   };
 
-  const getDatasetsByCompany = (companyAddress: string) => {
+  const useGetDatasetsByCompany = (companyAddress: string) => {
     return useReadContract({
       address: DATASET_REGISTRY_ADDRESS as `0x${string}`,
       abi: DatasetRegistryABI.abi,
@@ -121,9 +121,9 @@ export function useDatasetRegistry() {
 
   return {
     registerDataset,
-    getDataset,
-    getAllDatasets,
-    getDatasetsByCompany,
+    useGetDataset,
+    useGetAllDatasets,
+    useGetDatasetsByCompany,
     isLoading: isLoading || isWritePending || isConfirming,
     isConfirmed,
     error,

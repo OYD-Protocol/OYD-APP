@@ -15,7 +15,7 @@ interface UploadFormData {
 }
 
 export default function UploadPage() {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { registerDataset, isLoading: isRegistering, error: registryError, isConfirmed, transactionHash } = useDatasetRegistry();
 
   const [formData, setFormData] = useState<UploadFormData>({
@@ -181,8 +181,7 @@ export default function UploadPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Navbar />
-
-      <main className="lg:ml-64 transition-all duration-300 pt-16 lg:pt-0 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="lg:ml-64 mt-4 transition-all bg-white duration-300 pt-16 lg:pt-0 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Upload Dataset</h1>
           <p className="text-slate-600">Upload your dataset to IPFS and register it on the blockchain</p>
@@ -202,7 +201,7 @@ export default function UploadPage() {
                 value={formData.name}
                 onChange={handleInputChange}
                 required
-                className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter dataset name"
               />
             </div>
@@ -219,7 +218,7 @@ export default function UploadPage() {
                 onChange={handleInputChange}
                 required
                 rows={4}
-                className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Describe your dataset"
               />
             </div>
@@ -235,7 +234,7 @@ export default function UploadPage() {
                 value={formData.category}
                 onChange={handleInputChange}
                 required
-                className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Select a category</option>
                 {categories.map(cat => (
@@ -258,7 +257,7 @@ export default function UploadPage() {
                   value={formData.priceETH}
                   onChange={handleInputChange}
                   required
-                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="0.5"
                 />
               </div>
@@ -274,7 +273,7 @@ export default function UploadPage() {
                   value={formData.priceUSDC}
                   onChange={handleInputChange}
                   required
-                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="1250"
                 />
               </div>
@@ -291,7 +290,7 @@ export default function UploadPage() {
                 onChange={handleFileChange}
                 required
                 accept=".json,.csv,.txt,.xml"
-                className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
               <p className="text-xs text-slate-500 mt-1">
                 Supported formats: JSON, CSV, TXT, XML

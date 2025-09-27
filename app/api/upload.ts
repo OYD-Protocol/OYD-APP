@@ -4,7 +4,7 @@ import lighthouse from '@lighthouse-web3/sdk';
 const LIGHTHOUSE_API_KEY = process.env.LH_API_KEY;
 
 export interface UploadRequest {
-  data: any;
+  data: unknown;
   metadata: {
     name: string;
     description: string;
