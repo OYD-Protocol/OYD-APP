@@ -109,16 +109,16 @@ export default function Page() {
         {/* Company Ticker */}
         <div className="bg-slate-100 border-y border-slate-200 py-6 overflow-hidden">
           <div className="company-ticker-animation-fast whitespace-nowrap h-10 text-xl font-medium text-slate-700 inline-flex items-center gap-20">
-           <img src="/flipkart.webp" alt="Flipkart" height={50} width={50} />
+           <img src="/flipkart.webp" alt="Flipkart" height={70} width={70} />
            <img src="/PW.png" alt="PW" height={70} width={70} />
-           <img src="/Google.webp" alt="Spotify" height={60} width={50} />
-           <img src="/Netflix.png" alt="Netflix" height={30} width={30} />
+           <img src="/Google.webp" alt="Spotify" height={70} width={50} />
+           <img src="/Netflix.png" alt="Netflix" height={70} width={50} />
            {/* Duplicate content for seamless loop */}
-           <img src="/flipkart.webp" alt="Flipkart" height={60} width={50} />
-           <img src="/Amazon_icon.svg" alt="Amazon" height={50} width={50} />
+           <img src="/flipkart.webp" alt="Flipkart" height={70} width={90} />
+           <img src="/Amazon_icon.svg" alt="Amazon" height={70} width={50} />
            <img src="/PW.png" alt="PW" height={70} width={70} />
            <img src="/Spotify-Icon-Logo.wine.svg" alt="Spotify" height={70} width={70} />
-           <img src="/Airbnb_logo.png" alt="Airbnb" height={50} width={50} />
+           <img src="/Airbnb_logo.png" alt="Airbnb" height={50} width={80} />
           </div>
         </div>
 
