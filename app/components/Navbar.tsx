@@ -4,13 +4,19 @@ import { useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Logo from '@/app/components/logo';
+import { useAccount } from 'wagmi';
 
 export default function Navbar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
+  const { isConnected } = useAccount();
 
   const isActive = (path: string) => pathname === path;
+
+  // Hide navbar on landing page if wallet is not connected
+  const shouldShowNavbar = pathname !== '/' || isConnected;
 
   const navItems = [
     {
@@ -63,17 +69,17 @@ export default function Navbar() {
   return (
     <>
       {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden bg-white shadow-lg border border-slate-200 text-slate-700 p-3 rounded-xl hover:bg-slate-50 transition-colors"
-      >
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-        </svg>
-      </button>
+      {shouldShowNavbar && (
+        <button
+          onClick={() => setIsMobileOpen(!isMobileOpen)}
+          className="fixed top-4 left-4 z-50 lg:hidden bg-white shadow-lg border border-slate-200 text-slate-700 p-3 rounded-xl hover:bg-slate-50 transition-colors"
+        >
+          :<Logo />
+        </button>
+      )}
 
       {/* Mobile Overlay */}
-      {isMobileOpen && (
+      {shouldShowNavbar && isMobileOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={() => setIsMobileOpen(false)}
@@ -81,22 +87,16 @@ export default function Navbar() {
       )}
 
       {/* Left Sidebar Navigation */}
-      <nav className={`fixed left-0 top-0 h-full bg-white/95 backdrop-blur-sm border-r border-slate-200 transition-all duration-300 z-40 ${
-        isCollapsed ? 'w-16' : 'w-64'
-      } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 shadow-lg`}>
+      {shouldShowNavbar && (
+        <nav className={`fixed left-0 top-0 h-full bg-white/95 backdrop-blur-sm border-r border-slate-200 transition-all duration-300 z-40 ${
+          isCollapsed ? 'w-16' : 'w-64'
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 shadow-lg`}>
         <div className="flex flex-col h-full">
           {/* Logo Section */}
           <div className="p-6 border-b border-slate-200">
             <Link href="/" className="flex items-center">
               {!isCollapsed ? (
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-white font-bold text-sm">DD</span>
-                  </div>
-                  <h1 className="text-xl font-bold text-slate-900">
-                    Data<span className="text-blue-600">DAO</span>
-                  </h1>
-                </div>
+              <Logo />
               ) : (
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">DD</span>
@@ -151,14 +151,15 @@ export default function Navbar() {
             </button>
           </div>
         </div>
-      </nav>
+        </nav>
+      )}
 
       {/* Wallet Connect Button - Fixed Top Right */}
-      <div className="fixed top-4 right-4 z-50">
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 p-1">
-          <div className="scale-90 origin-center">
+      <div className="fixed top-9 right-4 z-50 scale-86">
+        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200">
+          <div className="scale-100 origin-center">
             <ConnectButton
-              showBalance={false}
+              showBalance={true}
               chainStatus="none"
               accountStatus={{
                 smallScreen: 'avatar',
