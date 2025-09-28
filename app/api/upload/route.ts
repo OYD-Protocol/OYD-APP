@@ -47,17 +47,44 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString()
     };
 
-    // Save to our datasets API
+    // Save directly to Supabase instead of calling API
     try {
-      await fetch('/api/datasets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(datasetRecord),
-      });
+      const { supabase } = await import('@/lib/supabase');
+      
+      // Transform the dataset to match our database schema
+      const dbDataset = {
+        id: datasetRecord.id,
+        company_name: datasetRecord.companyName,
+        data_name: datasetRecord.dataName,
+        data_description: datasetRecord.dataDescription,
+        category: datasetRecord.category,
+        cid: datasetRecord.cid,
+        timestamp: datasetRecord.timestamp,
+        file_size: datasetRecord.fileSize,
+        uploader_address: datasetRecord.uploaderAddress,
+        uploaded_by: datasetRecord.uploadedBy,
+        oyd_cost: datasetRecord.oydCost,
+        downloads: datasetRecord.downloads || 0,
+        created_at: new Date().toISOString()
+      };
+
+      console.log('Saving dataset to Supabase:', dbDataset);
+
+      const { data, error } = await supabase
+        .from('datasets')
+        .insert([dbDataset])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw new Error(`Database save failed: ${error.message}`);
+      }
+
+      console.log('Successfully saved dataset to Supabase:', data);
     } catch (e) {
-      console.log('Failed to save to datasets API, dataset record:', datasetRecord);
+      console.error('Failed to save to database:', e);
+      // Don't throw here - we still want the upload to succeed even if DB save fails
     }
 
     // Return success response
