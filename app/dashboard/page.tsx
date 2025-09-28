@@ -392,6 +392,11 @@ export default function Dashboard() {
       setPurchaseModal({ show: false, dataset: null, isProcessing: false, error: null });
       setShowSuccess(true);
       
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
+      
     } catch (error) {
       console.error('Download error:', error);
       setPurchaseModal(prev => ({
@@ -655,14 +660,14 @@ export default function Dashboard() {
                     </svg>
                                   Owned
                   </div>
-                          ) : (
-                            <button
+                ) : (
+                  <button
                               onClick={() => showPurchaseModal(dataset)}
                               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                            >
+                  >
                               Download
-                            </button>
-                          )}
+                  </button>
+                )}
                             </td>
                           </tr>
                         ))}
@@ -799,6 +804,7 @@ export default function Dashboard() {
         {/* Success Notification */}
         {showSuccess && (
           <div className="fixed top-4 right-4 bg-white border border-emerald-200 shadow-xl rounded-xl p-4 z-50 animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center mr-3">
                 <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
@@ -806,9 +812,18 @@ export default function Dashboard() {
                 </svg>
               </div>
               <div>
-                <div className="font-semibold text-slate-900">Purchase Successful!</div>
-                <div className="text-sm text-slate-600">Access your dataset from My Datasets</div>
+                  <div className="font-semibold text-slate-900">Download Successful!</div>
+                  <div className="text-sm text-slate-600">Dataset has been downloaded to your device</div>
+                </div>
               </div>
+              <button
+                onClick={() => setShowSuccess(false)}
+                className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
           </div>
         )}
@@ -892,7 +907,7 @@ export default function Dashboard() {
                     )}
 
                     <div className="text-xs text-slate-500 mb-6">
-                      The dataset will be decrypted and downloaded to your device. No payment required in demo mode.
+                      The dataset will be decrypted and downloaded to your device.
                     </div>
                   </>
                 )}
