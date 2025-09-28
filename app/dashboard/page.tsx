@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '@/app/components/Navbar';
 import { useBuyDataset } from '@/app/hooks/useBuyDataset';
 import { useDataAccess } from '@/app/hooks/useDataAccess';
+import lighthouse from '@lighthouse-web3/sdk';
+import { ethers } from 'ethers';
 
 interface Dataset {
   id: string;
@@ -16,6 +18,27 @@ interface Dataset {
   seller: string;
   downloads: number;
   oydCost: number; // Cost in OYD datacoins (1KB = 1 OYD)
+  uploadedBy: string;
+}
+
+interface UploadedDataset {
+  id: string;
+  companyName?: string;
+  company_name?: string;
+  dataDescription?: string;
+  data_description?: string;
+  category: string;
+  fileSize?: number;
+  file_size?: number;
+  timestamp: string;
+  cid: string;
+  uploaderAddress?: string;
+  uploader_address?: string;
+  uploadedBy?: string;
+  uploaded_by?: string;
+  downloads: number;
+  oydCost?: number;
+  oyd_cost?: number;
 }
 
 // Categories for the marketplace
@@ -59,7 +82,8 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       cid: 'QmFlipkart1BnNjpGhJ2fR4vL9mX5sT7uE1wP6qA3nB8dC9fG2h',
       seller: '0xFlip...kart',
       downloads: 156,
-      oydCost: 2621440 // 2.5 GB = ~2,621,440 KB = 2,621,440 OYD
+      oydCost: 2621440, // 2.5 GB = ~2,621,440 KB = 2,621,440 OYD
+      uploadedBy: '0xFlip...kart'
     },
     {
       id: 'amazon-1',
@@ -71,7 +95,8 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       cid: 'QmAmazon1BnNjpGhJ3fR5vL0mX6sT8uE2wP7qA4nB9dC0fG3h',
       seller: '0xAmaz...ozon',
       downloads: 203,
-      oydCost: 4404019 // 4.2 GB = ~4,404,019 KB = 4,404,019 OYD
+      oydCost: 4404019, // 4.2 GB = ~4,404,019 KB = 4,404,019 OYD
+      uploadedBy: '0xAmaz...ozon'
     }
   ],
   groceries: [
@@ -85,7 +110,8 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       cid: 'QmZepto1BnNjpGhJ4fR6vL1mX7sT9uE3wP8qA5nB0dC1fG4h',
       seller: '0xZept...opto',
       downloads: 89,
-      oydCost: 1887437 // 1.8 GB = ~1,887,437 KB = 1,887,437 OYD
+      oydCost: 1887437, // 1.8 GB = ~1,887,437 KB = 1,887,437 OYD
+      uploadedBy: '0xZept...opto'
     },
     {
       id: 'blinkit-1',
@@ -97,7 +123,8 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       cid: 'QmBlinkit1BnNjpGhJ5fR7vL2mX8sT0uE4wP9qA6nB1dC2fG5h',
       seller: '0xBlin...nkit',
       downloads: 67,
-      oydCost: 1572864 // 1.5 GB = ~1,572,864 KB = 1,572,864 OYD
+      oydCost: 1572864, // 1.5 GB = ~1,572,864 KB = 1,572,864 OYD
+      uploadedBy: '0xBlin...nkit'
     },
     {
       id: 'swiggy-1',
@@ -109,7 +136,8 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       cid: 'QmSwiggy1BnNjpGhJ6fR8vL3mX9sT1uE5wP0qA7nB2dC3fG6h',
       seller: '0xSwig...iggy',
       downloads: 134,
-      oydCost: 3251159 // 3.1 GB = ~3,251,159 KB = 3,251,159 OYD
+      oydCost: 3251159, // 3.1 GB = ~3,251,159 KB = 3,251,159 OYD
+      uploadedBy: '0xSwig...iggy'
     },
     {
       id: 'zomato-1',
@@ -121,7 +149,8 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       cid: 'QmZomato1BnNjpGhJ7fR9vL4mX0sT2uE6wP1qA8nB3dC4fG7h',
       seller: '0xZoma...mato',
       downloads: 98,
-      oydCost: 2831155 // 2.7 GB = ~2,831,155 KB = 2,831,155 OYD
+      oydCost: 2831155, // 2.7 GB = ~2,831,155 KB = 2,831,155 OYD
+      uploadedBy: '0xZoma...mato'
     }
   ],
   pharmacy: [
@@ -135,7 +164,8 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       cid: 'Qm1mg1BnNjpGhJ8fR0vL5mX1sT3uE7wP2qA9nB4dC5fG8h',
       seller: '0x1mg1...mg11',
       downloads: 45,
-      oydCost: 921600 // 900 MB = ~921,600 KB = 921,600 OYD
+      oydCost: 921600, // 900 MB = ~921,600 KB = 921,600 OYD
+      uploadedBy: '0x1mg1...mg11'
     }
   ],
   apparels: [
@@ -149,7 +179,8 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       cid: 'QmMyntra1BnNjpGhJ9fR1vL6mX2sT4uE8wP3qA0nB5dC6fG9h',
       seller: '0xMynt...ntra',
       downloads: 112,
-      oydCost: 2202010 // 2.1 GB = ~2,202,010 KB = 2,202,010 OYD
+      oydCost: 2202010, // 2.1 GB = ~2,202,010 KB = 2,202,010 OYD
+      uploadedBy: '0xMynt...ntra'
     },
     {
       id: 'ajio-1',
@@ -161,7 +192,8 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       cid: 'QmAjio1BnNjpGhJ0fR2vL7mX3sT5uE9wP4qA1nB6dC7fG0h',
       seller: '0xAjio...jio1',
       downloads: 78,
-      oydCost: 1677722 // 1.6 GB = ~1,677,722 KB = 1,677,722 OYD
+      oydCost: 1677722, // 1.6 GB = ~1,677,722 KB = 1,677,722 OYD
+      uploadedBy: '0xAjio...jio1'
     }
   ]
 };
@@ -170,8 +202,148 @@ export default function Dashboard() {
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [uploadedDatasets, setUploadedDatasets] = useState<UploadedDataset[]>([]);
+  const [previewModal, setPreviewModal] = useState<{
+    show: boolean;
+    dataset: Dataset | null;
+    fileUrl: string | null;
+    isDecrypting: boolean;
+    error: string | null;
+  }>({
+    show: false,
+    dataset: null,
+    fileUrl: null,
+    isDecrypting: false,
+    error: null
+  });
   const { buyDataset, isLoading, error, hasPurchased } = useBuyDataset();
   const { generateAccess } = useDataAccess();
+
+  // Fetch uploaded datasets
+  const fetchUploadedDatasets = async () => {
+    try {
+      const response = await fetch('/api/datasets');
+      const data = await response.json();
+      if (data.success) {
+        setUploadedDatasets(data.datasets);
+      }
+    } catch (error) {
+      console.error('Failed to fetch uploaded datasets:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUploadedDatasets();
+    
+    // Set up polling to refresh data every 30 seconds
+    const interval = setInterval(fetchUploadedDatasets, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Combine mock data with uploaded datasets
+  const getAllDatasets = () => {
+    const allDatasets = { ...companyDatasets };
+    
+    // Add uploaded datasets to their respective categories
+    uploadedDatasets.forEach(dataset => {
+      // Handle both old format (UploadedDataset) and new format (DatabaseDataset)
+      const categoryKey = dataset.category;
+      if (!allDatasets[categoryKey]) {
+        allDatasets[categoryKey] = [];
+      }
+      
+      // Convert uploaded dataset to match our Dataset interface
+      const formattedDataset: Dataset = {
+        id: dataset.id,
+        name: dataset.companyName || dataset.company_name || 'Unknown Company',
+        description: dataset.dataDescription || dataset.data_description || 'No description available',
+        category: categories.find(cat => cat.id === dataset.category)?.name || dataset.category,
+        size: dataset.fileSize ? formatFileSize(dataset.fileSize) : formatFileSize(dataset.file_size || 0),
+        timestamp: dataset.timestamp,
+        cid: dataset.cid,
+        seller: dataset.uploaderAddress || dataset.uploader_address || 'Unknown',
+        downloads: dataset.downloads || 0,
+        oydCost: dataset.oydCost || dataset.oyd_cost || 0,
+        uploadedBy: dataset.uploadedBy || dataset.uploaded_by || 'Unknown'
+      };
+      
+      allDatasets[categoryKey].push(formattedDataset);
+    });
+    
+    return allDatasets;
+  };
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Encryption signature for decryption
+  const encryptionSignature = async () => {
+    if (!window.ethereum) {
+      throw new Error('Please install MetaMask!');
+    }
+    
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const address = await signer.getAddress();
+    const messageRequested = (await lighthouse.getAuthMessage(address)).data.message;
+    const signedMessage = await signer.signMessage(messageRequested || '');
+    
+    return {
+      signedMessage: signedMessage,
+      publicKey: address
+    };
+  };
+
+  // Decrypt and preview file
+  const decryptAndPreview = async (dataset: Dataset) => {
+    setPreviewModal({
+      show: true,
+      dataset,
+      fileUrl: null,
+      isDecrypting: true,
+      error: null
+    });
+
+    try {
+      const cid = dataset.cid;
+      const { publicKey, signedMessage } = await encryptionSignature();
+      
+      // Fetch encryption key
+      const keyObject = await lighthouse.fetchEncryptionKey(
+        cid,
+        publicKey,
+        signedMessage
+      );
+
+      // Decrypt file (assuming JSON for now, can be made dynamic)
+      const fileType = "application/json";
+      const decrypted = await lighthouse.decryptFile(cid, keyObject.data.key || '', fileType);
+      
+      // Create URL for preview
+      const url = URL.createObjectURL(decrypted);
+      
+      setPreviewModal(prev => ({
+        ...prev,
+        fileUrl: url,
+        isDecrypting: false
+      }));
+      
+    } catch (error) {
+      console.error('Decryption error:', error);
+      setPreviewModal(prev => ({
+        ...prev,
+        isDecrypting: false,
+        error: error instanceof Error ? error.message : 'Failed to decrypt file'
+      }));
+    }
+  };
 
   const handleBuyDataset = async (dataset: Dataset) => {
     // For now, we'll use ETH as the currency type since the hook expects it
@@ -232,6 +404,15 @@ export default function Dashboard() {
                 }
               </p>
             </div>
+            <button
+              onClick={fetchUploadedDatasets}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+              </svg>
+              <span>Refresh</span>
+            </button>
             <div className="hidden md:flex items-center space-x-4">
               {selectedCategory && (
                 <button
@@ -247,7 +428,7 @@ export default function Dashboard() {
                 </div>
                 <div className="text-2xl font-bold text-slate-900">
                   {selectedCategory 
-                    ? Array.from(new Set(companyDatasets[selectedCategory]?.map(dataset => dataset.name) || [])).length
+                    ? Array.from(new Set(getAllDatasets()[selectedCategory]?.map(dataset => dataset.name) || [])).length
                     : categories.length
                   }
                 </div>
@@ -256,7 +437,7 @@ export default function Dashboard() {
                 <div className="bg-white rounded-lg px-4 py-2 border border-slate-200 shadow-sm">
                   <div className="text-sm text-slate-500">Total Datasets</div>
                   <div className="text-2xl font-bold text-slate-900">
-                    {companyDatasets[selectedCategory]?.length || 0}
+                    {getAllDatasets()[selectedCategory]?.length || 0}
                   </div>
                 </div>
               )}
@@ -305,8 +486,8 @@ export default function Dashboard() {
           // Show Companies in Selected Category with Individual Tables
           <div className="space-y-8">
             {/* Get unique companies in the selected category */}
-            {Array.from(new Set(companyDatasets[selectedCategory]?.map(dataset => dataset.name) || [])).map((companyName) => {
-              const companyData = companyDatasets[selectedCategory]?.filter(dataset => dataset.name === companyName) || [];
+            {Array.from(new Set(getAllDatasets()[selectedCategory]?.map(dataset => dataset.name) || [])).map((companyName) => {
+              const companyData = getAllDatasets()[selectedCategory]?.filter(dataset => dataset.name === companyName) || [];
               
               return (
                 <div key={companyName} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -337,6 +518,7 @@ export default function Dashboard() {
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">CID</th>
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Downloads</th>
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Cost (OYD)</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Uploaded By</th>
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Seller</th>
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Action</th>
                         </tr>
@@ -388,6 +570,12 @@ export default function Dashboard() {
                 </div>
                             </td>
                             <td className="py-4 px-6 text-xs font-mono text-slate-600">
+                              {dataset.uploadedBy.length > 10 ? 
+                                `${dataset.uploadedBy.slice(0, 6)}...${dataset.uploadedBy.slice(-4)}` : 
+                                dataset.uploadedBy
+                              }
+                            </td>
+                            <td className="py-4 px-6 text-xs font-mono text-slate-600">
                               {dataset.seller}
                             </td>
                             <td className="py-4 px-6">
@@ -400,10 +588,10 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => setSelectedDataset(dataset)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                              onClick={() => decryptAndPreview(dataset)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   >
-                                  Buy
+                              Preview & Buy
                   </button>
                 )}
                             </td>
@@ -443,7 +631,7 @@ export default function Dashboard() {
             })}
 
             {/* No data message */}
-            {(!companyDatasets[selectedCategory] || companyDatasets[selectedCategory].length === 0) && (
+            {(!getAllDatasets()[selectedCategory] || getAllDatasets()[selectedCategory].length === 0) && (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
                 <div className="text-center py-16">
                   <div className="text-slate-500 text-xl mb-2">No datasets available</div>
@@ -552,6 +740,119 @@ export default function Dashboard() {
                 <div className="font-semibold text-slate-900">Purchase Successful!</div>
                 <div className="text-sm text-slate-600">Access your dataset from My Datasets</div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* File Preview Modal */}
+        {previewModal.show && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+              <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Dataset Preview</h3>
+                  {previewModal.dataset && (
+                    <p className="text-slate-600 text-sm">{previewModal.dataset.name} - {previewModal.dataset.description}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setPreviewModal({ show: false, dataset: null, fileUrl: null, isDecrypting: false, error: null })}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="p-6 max-h-[60vh] overflow-y-auto">
+                {previewModal.isDecrypting && (
+                  <div className="text-center py-12">
+                    <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-slate-600">Decrypting file...</p>
+                  </div>
+                )}
+
+                {previewModal.error && (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <p className="text-red-600 font-medium mb-2">Decryption Failed</p>
+                    <p className="text-slate-600 text-sm">{previewModal.error}</p>
+                  </div>
+                )}
+
+                {previewModal.fileUrl && !previewModal.isDecrypting && !previewModal.error && (
+                  <div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+                      <h4 className="font-semibold text-slate-900 mb-2">File Preview</h4>
+                      <p className="text-sm text-slate-600 mb-4">This is a sample of the decrypted dataset. Purchase to download the complete file.</p>
+                      
+                      {/* File content preview - assuming JSON for now */}
+                      <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto">
+                        <pre>
+                          {/* This would show actual file content */}
+                          {`{
+  "sample_data": "This is a preview of the dataset",
+  "total_records": 10000,
+  "format": "JSON",
+  "description": "Consumer behavior data",
+  "preview_note": "This is just a sample. Full dataset available after purchase."
+}`}
+                        </pre>
+                      </div>
+                    </div>
+
+                    {previewModal.dataset && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-medium text-blue-900">Dataset Cost</div>
+                            <div className="text-2xl font-bold text-blue-600">
+                              {previewModal.dataset.oydCost.toLocaleString()} OYD
+                            </div>
+                            <div className="text-xs text-blue-700">datacoins</div>
+                          </div>
+                          <div className="text-right text-sm text-blue-800">
+                            <div>Size: {previewModal.dataset.size}</div>
+                            <div>Company: {previewModal.dataset.name}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {previewModal.fileUrl && !previewModal.isDecrypting && !previewModal.error && previewModal.dataset && (
+                <div className="flex gap-3 p-6 border-t border-slate-200">
+                  <button
+                    onClick={() => setPreviewModal({ show: false, dataset: null, fileUrl: null, isDecrypting: false, error: null })}
+                    className="flex-1 bg-slate-100 text-slate-700 py-3 px-4 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <a
+                    href={previewModal.fileUrl}
+                    download={`${previewModal.dataset.name}-sample.json`}
+                    className="flex-1 bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 transition-colors text-center"
+                  >
+                    Download Sample
+                  </a>
+                  <button
+                    onClick={() => {
+                      setSelectedDataset(previewModal.dataset);
+                      setPreviewModal({ show: false, dataset: null, fileUrl: null, isDecrypting: false, error: null });
+                    }}
+                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Purchase Full Dataset
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

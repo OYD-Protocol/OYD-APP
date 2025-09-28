@@ -239,7 +239,8 @@ export default function UploadPage() {
           cid: cid,
           timestamp: timestamp,
           fileSize: formData.file.size,
-          uploaderAddress: signerAddress
+          uploaderAddress: signerAddress,
+          uploadedBy: signerAddress
         }),
       });
 

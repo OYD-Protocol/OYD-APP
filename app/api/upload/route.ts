@@ -12,6 +12,7 @@ export interface UploadRequest {
   timestamp: string;
   fileSize: number;
   uploaderAddress: string;
+  uploadedBy: string;
 }
 
 export async function POST(request: Request) {
@@ -20,10 +21,10 @@ export async function POST(request: Request) {
     const body: UploadRequest = await request.json();
     
     // Validate required fields
-    const { category, companyName, dataName, dataDescription, cid, timestamp, fileSize, uploaderAddress } = body;
-    if (!category || !companyName || !dataName || !dataDescription || !cid || !timestamp || !fileSize || !uploaderAddress) {
+    const { category, companyName, dataName, dataDescription, cid, timestamp, fileSize, uploaderAddress, uploadedBy } = body;
+    if (!category || !companyName || !dataName || !dataDescription || !cid || !timestamp || !fileSize || !uploaderAddress || !uploadedBy) {
       return NextResponse.json(
-        { error: 'Missing required fields: category, companyName, dataName, dataDescription, cid, timestamp, fileSize, uploaderAddress' },
+        { error: 'Missing required fields: category, companyName, dataName, dataDescription, cid, timestamp, fileSize, uploaderAddress, uploadedBy' },
         { status: 400 }
       );
     }
@@ -40,13 +41,24 @@ export async function POST(request: Request) {
       timestamp,
       fileSize,
       uploaderAddress,
+      uploadedBy,
       oydCost: Math.ceil(fileSize / 1024), // 1KB = 1 OYD datacoin
       downloads: 0,
       createdAt: new Date().toISOString()
     };
 
-    // TODO: Save to actual database
-    console.log('Dataset record to save:', datasetRecord);
+    // Save to our datasets API
+    try {
+      await fetch('/api/datasets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datasetRecord),
+      });
+    } catch (e) {
+      console.log('Failed to save to datasets API, dataset record:', datasetRecord);
+    }
 
     // Return success response
     return NextResponse.json({
