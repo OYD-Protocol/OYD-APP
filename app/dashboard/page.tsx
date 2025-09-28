@@ -12,10 +12,10 @@ interface Dataset {
   category: string;
   size: string;
   timestamp: string;
-  ipfsHash: string;
+  cid: string;
   seller: string;
   downloads: number;
-  oydCost: number; // Cost in OYD datacoins (1MB = 1 OYD)
+  oydCost: number; // Cost in OYD datacoins (1KB = 1 OYD)
 }
 
 // Categories for the marketplace
@@ -56,10 +56,10 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       category: 'Supermart',
       size: '2.5 GB',
       timestamp: '2024-01-20T10:30:00Z',
-      ipfsHash: 'QmFlipkart1BnNjpGhJ2fR4vL9mX5sT7uE1wP6qA3nB8dC9fG2h',
+      cid: 'QmFlipkart1BnNjpGhJ2fR4vL9mX5sT7uE1wP6qA3nB8dC9fG2h',
       seller: '0xFlip...kart',
       downloads: 156,
-      oydCost: 2560 // 2.5 GB = ~2560 MB = 2560 OYD
+      oydCost: 2621440 // 2.5 GB = ~2,621,440 KB = 2,621,440 OYD
     },
     {
       id: 'amazon-1',
@@ -68,10 +68,10 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       category: 'Supermart',
       size: '4.2 GB',
       timestamp: '2024-01-18T14:45:00Z',
-      ipfsHash: 'QmAmazon1BnNjpGhJ3fR5vL0mX6sT8uE2wP7qA4nB9dC0fG3h',
+      cid: 'QmAmazon1BnNjpGhJ3fR5vL0mX6sT8uE2wP7qA4nB9dC0fG3h',
       seller: '0xAmaz...ozon',
       downloads: 203,
-      oydCost: 4300 // 4.2 GB = ~4300 MB = 4300 OYD
+      oydCost: 4404019 // 4.2 GB = ~4,404,019 KB = 4,404,019 OYD
     }
   ],
   groceries: [
@@ -82,10 +82,10 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       category: 'Groceries and Food',
       size: '1.8 GB',
       timestamp: '2024-01-22T09:15:00Z',
-      ipfsHash: 'QmZepto1BnNjpGhJ4fR6vL1mX7sT9uE3wP8qA5nB0dC1fG4h',
+      cid: 'QmZepto1BnNjpGhJ4fR6vL1mX7sT9uE3wP8qA5nB0dC1fG4h',
       seller: '0xZept...opto',
       downloads: 89,
-      oydCost: 1840 // 1.8 GB = ~1840 MB = 1840 OYD
+      oydCost: 1887437 // 1.8 GB = ~1,887,437 KB = 1,887,437 OYD
     },
     {
       id: 'blinkit-1',
@@ -94,10 +94,10 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       category: 'Groceries and Food',
       size: '1.5 GB',
       timestamp: '2024-01-21T16:20:00Z',
-      ipfsHash: 'QmBlinkit1BnNjpGhJ5fR7vL2mX8sT0uE4wP9qA6nB1dC2fG5h',
+      cid: 'QmBlinkit1BnNjpGhJ5fR7vL2mX8sT0uE4wP9qA6nB1dC2fG5h',
       seller: '0xBlin...nkit',
       downloads: 67,
-      oydCost: 1536 // 1.5 GB = ~1536 MB = 1536 OYD
+      oydCost: 1572864 // 1.5 GB = ~1,572,864 KB = 1,572,864 OYD
     },
     {
       id: 'swiggy-1',
@@ -106,10 +106,10 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       category: 'Groceries and Food',
       size: '3.1 GB',
       timestamp: '2024-01-19T12:30:00Z',
-      ipfsHash: 'QmSwiggy1BnNjpGhJ6fR8vL3mX9sT1uE5wP0qA7nB2dC3fG6h',
+      cid: 'QmSwiggy1BnNjpGhJ6fR8vL3mX9sT1uE5wP0qA7nB2dC3fG6h',
       seller: '0xSwig...iggy',
       downloads: 134,
-      oydCost: 3174 // 3.1 GB = ~3174 MB = 3174 OYD
+      oydCost: 3251159 // 3.1 GB = ~3,251,159 KB = 3,251,159 OYD
     },
     {
       id: 'zomato-1',
@@ -118,10 +118,10 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       category: 'Groceries and Food',
       size: '2.7 GB',
       timestamp: '2024-01-17T11:45:00Z',
-      ipfsHash: 'QmZomato1BnNjpGhJ7fR9vL4mX0sT2uE6wP1qA8nB3dC4fG7h',
+      cid: 'QmZomato1BnNjpGhJ7fR9vL4mX0sT2uE6wP1qA8nB3dC4fG7h',
       seller: '0xZoma...mato',
       downloads: 98,
-      oydCost: 2765 // 2.7 GB = ~2765 MB = 2765 OYD
+      oydCost: 2831155 // 2.7 GB = ~2,831,155 KB = 2,831,155 OYD
     }
   ],
   pharmacy: [
@@ -132,10 +132,10 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       category: 'Pharmacy',
       size: '900 MB',
       timestamp: '2024-01-23T08:00:00Z',
-      ipfsHash: 'Qm1mg1BnNjpGhJ8fR0vL5mX1sT3uE7wP2qA9nB4dC5fG8h',
+      cid: 'Qm1mg1BnNjpGhJ8fR0vL5mX1sT3uE7wP2qA9nB4dC5fG8h',
       seller: '0x1mg1...mg11',
       downloads: 45,
-      oydCost: 900 // 900 MB = 900 OYD
+      oydCost: 921600 // 900 MB = ~921,600 KB = 921,600 OYD
     }
   ],
   apparels: [
@@ -146,10 +146,10 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       category: 'Apparels',
       size: '2.1 GB',
       timestamp: '2024-01-16T15:30:00Z',
-      ipfsHash: 'QmMyntra1BnNjpGhJ9fR1vL6mX2sT4uE8wP3qA0nB5dC6fG9h',
+      cid: 'QmMyntra1BnNjpGhJ9fR1vL6mX2sT4uE8wP3qA0nB5dC6fG9h',
       seller: '0xMynt...ntra',
       downloads: 112,
-      oydCost: 2150 // 2.1 GB = ~2150 MB = 2150 OYD
+      oydCost: 2202010 // 2.1 GB = ~2,202,010 KB = 2,202,010 OYD
     },
     {
       id: 'ajio-1',
@@ -158,10 +158,10 @@ const companyDatasets: { [key: string]: Dataset[] } = {
       category: 'Apparels',
       size: '1.6 GB',
       timestamp: '2024-01-15T13:15:00Z',
-      ipfsHash: 'QmAjio1BnNjpGhJ0fR2vL7mX3sT5uE9wP4qA1nB6dC7fG0h',
+      cid: 'QmAjio1BnNjpGhJ0fR2vL7mX3sT5uE9wP4qA1nB6dC7fG0h',
       seller: '0xAjio...jio1',
       downloads: 78,
-      oydCost: 1638 // 1.6 GB = ~1638 MB = 1638 OYD
+      oydCost: 1677722 // 1.6 GB = ~1,677,722 KB = 1,677,722 OYD
     }
   ]
 };
@@ -179,7 +179,7 @@ export default function Dashboard() {
     const success = await buyDataset(dataset.id, dataset.oydCost.toString(), 'ETH');
 
     if (success) {
-      await generateAccess(dataset.id, dataset.ipfsHash);
+      await generateAccess(dataset.id, dataset.cid);
       setSelectedDataset(null);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
@@ -334,7 +334,7 @@ export default function Dashboard() {
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Description</th>
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Timestamp</th>
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Size</th>
-                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">IPFS Hash</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">CID</th>
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Downloads</th>
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Cost (OYD)</th>
                           <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Seller</th>
@@ -360,11 +360,11 @@ export default function Dashboard() {
                             </td>
                             <td className="py-4 px-6 text-xs font-mono text-slate-700">
                               <div className="flex items-center space-x-2">
-                                <span>{dataset.ipfsHash.slice(0, 12)}...</span>
+                                <span>{dataset.cid.slice(0, 12)}...</span>
                                 <button
-                                  onClick={() => navigator.clipboard.writeText(dataset.ipfsHash)}
+                                  onClick={() => navigator.clipboard.writeText(dataset.cid)}
                                   className="text-blue-600 hover:text-blue-800 transition-colors"
-                                  title="Copy full hash"
+                                  title="Copy full CID"
                                 >
                                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path>
@@ -490,8 +490,8 @@ export default function Dashboard() {
                     <span className="text-slate-900 text-sm">{formatTimestamp(selectedDataset.timestamp)}</span>
                   </div>
                   <div className="flex justify-between items-center mb-3">
-                    <span className="text-slate-600 font-medium">IPFS Hash:</span>
-                    <span className="text-slate-900 font-mono text-sm">{selectedDataset.ipfsHash.slice(0, 20)}...</span>
+                    <span className="text-slate-600 font-medium">CID:</span>
+                    <span className="text-slate-900 font-mono text-sm">{selectedDataset.cid.slice(0, 20)}...</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600 font-medium">Seller:</span>

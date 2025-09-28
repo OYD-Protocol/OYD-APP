@@ -8,7 +8,7 @@ export interface UploadRequest {
   companyName: string;
   dataName: string;
   dataDescription: string;
-  ipfsHash: string;
+  cid: string;
   timestamp: string;
   fileSize: number;
   uploaderAddress: string;
@@ -20,10 +20,10 @@ export async function POST(request: Request) {
     const body: UploadRequest = await request.json();
     
     // Validate required fields
-    const { category, companyName, dataName, dataDescription, ipfsHash, timestamp, fileSize, uploaderAddress } = body;
-    if (!category || !companyName || !dataName || !dataDescription || !ipfsHash || !timestamp || !fileSize || !uploaderAddress) {
+    const { category, companyName, dataName, dataDescription, cid, timestamp, fileSize, uploaderAddress } = body;
+    if (!category || !companyName || !dataName || !dataDescription || !cid || !timestamp || !fileSize || !uploaderAddress) {
       return NextResponse.json(
-        { error: 'Missing required fields: category, companyName, dataName, dataDescription, ipfsHash, timestamp, fileSize, uploaderAddress' },
+        { error: 'Missing required fields: category, companyName, dataName, dataDescription, cid, timestamp, fileSize, uploaderAddress' },
         { status: 400 }
       );
     }
@@ -36,11 +36,11 @@ export async function POST(request: Request) {
       companyName,
       dataName,
       dataDescription,
-      ipfsHash,
+      cid,
       timestamp,
       fileSize,
       uploaderAddress,
-      oydCost: Math.ceil(fileSize / (1024 * 1024)), // 1MB = 1 OYD datacoin
+      oydCost: Math.ceil(fileSize / 1024), // 1KB = 1 OYD datacoin
       downloads: 0,
       createdAt: new Date().toISOString()
     };
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       success: true,
       message: 'Dataset successfully saved to database',
       dataset: datasetRecord,
-      decryptUrl: `https://decrypt.mesh3.network/evm/${ipfsHash}`
+      decryptUrl: `https://decrypt.mesh3.network/evm/${cid}`
     });
 
   } catch (error) {

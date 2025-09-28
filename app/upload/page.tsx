@@ -29,12 +29,17 @@ export default function UploadPage() {
   const [uploadStatus, setUploadStatus] = useState<{
     step: 'idle' | 'uploading' | 'uploaded' | 'registering' | 'completed' | 'error';
     message: string;
-    ipfsHash?: string;
+    cid?: string;
     error?: string;
   }>({
     step: 'idle',
     message: '',
   });
+
+  const [fileInfo, setFileInfo] = useState<{
+    size: number;
+    oydCoins: number;
+  } | null>(null);
 
   // Categories and companies matching dashboard
   const categories = [
@@ -88,6 +93,20 @@ export default function UploadPage() {
       ...prev,
       file
     }));
+
+    // Calculate file size and OYD coins (1KB = 1 OYD)
+    if (file) {
+      const sizeInBytes = file.size;
+      const sizeInKB = Math.ceil(sizeInBytes / 1024); // Round up to nearest KB
+      const oydCoins = sizeInKB; // 1KB = 1 OYD
+
+      setFileInfo({
+        size: sizeInBytes,
+        oydCoins: oydCoins
+      });
+    } else {
+      setFileInfo(null);
+    }
   };
 
   // Function to sign the authentication message using Wallet
@@ -123,6 +142,15 @@ export default function UploadPage() {
       let percentageDone = 100 - Number((progressData.total / progressData.uploaded).toFixed(2));
       console.log(percentageDone);
     }
+  };
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -180,14 +208,14 @@ export default function UploadPage() {
         throw new Error('Failed to upload encrypted file');
       }
 
-      const ipfsHash = output.data[0].Hash;
+      const cid = output.data[0].Hash;
       const timestamp = new Date().toISOString();
 
       // Step 2: Save to database via API
       setUploadStatus({
         step: 'uploaded',
         message: 'File uploaded successfully. Saving to database...',
-        ipfsHash: ipfsHash
+        cid: cid
       });
 
       const saveResponse = await fetch('/api/upload', {
@@ -200,7 +228,7 @@ export default function UploadPage() {
           companyName: formData.companyName,
           dataName: formData.dataName,
           dataDescription: formData.dataDescription,
-          ipfsHash: ipfsHash,
+          cid: cid,
           timestamp: timestamp,
           fileSize: formData.file.size,
           uploaderAddress: signerAddress
@@ -216,7 +244,7 @@ export default function UploadPage() {
       setUploadStatus({
         step: 'completed',
         message: 'Dataset successfully uploaded and encrypted on IPFS!',
-        ipfsHash: ipfsHash
+        cid: cid
       });
 
       // Reset form
@@ -344,6 +372,26 @@ export default function UploadPage() {
               <p className="text-xs text-slate-500 mt-1">
                 Supported formats: JSON, CSV, TXT, XML
               </p>
+              
+              {/* File Size and OYD Display */}
+              {fileInfo && (
+                <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-blue-900">File Size</div>
+                      <div className="text-lg font-bold text-blue-700">{formatFileSize(fileInfo.size)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-blue-900">OYD Coins to Mint</div>
+                      <div className="text-2xl font-bold text-blue-600">{fileInfo.oydCoins.toLocaleString()}</div>
+                      <div className="text-xs text-blue-600">OYD datacoins</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-blue-700">
+                    Rate: 1 KB = 1 OYD datacoin
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Upload Status */}
@@ -373,8 +421,8 @@ export default function UploadPage() {
                     ) : null}
                     <div>
                       <p className="font-medium">{uploadStatus.message}</p>
-                      {uploadStatus.ipfsHash && (
-                        <p className="text-sm mt-1">IPFS Hash: {uploadStatus.ipfsHash}</p>
+                      {uploadStatus.cid && (
+                        <p className="text-sm mt-1">CID: {uploadStatus.cid}</p>
                       )}
                       {transactionHash && (
                         <p className="text-sm mt-1">Transaction: {transactionHash}</p>
