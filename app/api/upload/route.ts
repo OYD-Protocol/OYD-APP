@@ -1,7 +1,4 @@
 import { NextResponse } from 'next/server';
-import lighthouse from '@lighthouse-web3/sdk';
-
-const LIGHTHOUSE_API_KEY = process.env.LH_API_KEY;
 
 export interface UploadRequest {
   category: string;

@@ -3,6 +3,7 @@
 import Navbar from '@/app/components/Navbar';
 import Logo from '@/app/components/logo';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAccount } from 'wagmi';
 
 export default function Page() {
@@ -110,11 +111,11 @@ export default function Page() {
         <div className="bg-white border-y border-slate-200 py-4 overflow-hidden">
           <div className="ticker-container">
             <div className="ticker">
-              <img src="/Google.webp" alt="Google" className="ticker-logo" />
-              <img src="/Netflix.png" alt="Netflix" className="ticker-logo" />
-              <img src="/Amazon_icon.svg" alt="Amazon" className="ticker-logo" />
-              <img src="/Spotify-Icon-Logo.wine.svg" alt="Spotify" className="ticker-logo" />
-              <img src="/Airbnb_logo.png" alt="Airbnb" className="ticker-logo" />
+              <Image src="/Google.webp" alt="Google" width={120} height={40} className="ticker-logo" />
+              <Image src="/Netflix.png" alt="Netflix" width={120} height={40} className="ticker-logo" />
+              <Image src="/Amazon_icon.svg" alt="Amazon" width={120} height={40} className="ticker-logo" />
+              <Image src="/Spotify-Icon-Logo.wine.svg" alt="Spotify" width={120} height={40} className="ticker-logo" />
+              <Image src="/Airbnb_logo.png" alt="Airbnb" width={120} height={40} className="ticker-logo" />
             </div>
           </div>
         </div>

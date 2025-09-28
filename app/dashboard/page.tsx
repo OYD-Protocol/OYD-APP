@@ -245,29 +245,11 @@ export default function Dashboard() {
     // Set up polling to refresh data every 30 seconds
     const interval = setInterval(fetchUploadedDatasets, 30000);
     
-    // Listen for access granted events
-    const handleAccessGranted = (event: CustomEvent) => {
-      const { requesterAddress } = event.detail;
-      if (requesterAddress === address) {
-        // Refresh access status for this user
-        checkAllDatasetAccess();
-      }
-    };
-
-    window.addEventListener('accessGranted', handleAccessGranted as EventListener);
-    
     return () => {
       clearInterval(interval);
-      window.removeEventListener('accessGranted', handleAccessGranted as EventListener);
     };
   }, [address]);
 
-  // Check access for all datasets when data changes
-  useEffect(() => {
-    if (address && uploadedDatasets.length > 0) {
-      checkAllDatasetAccess();
-    }
-  }, [address, uploadedDatasets]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear access cache when wallet address changes
   useEffect(() => {
@@ -550,6 +532,30 @@ export default function Dashboard() {
     setDatasetAccess(accessChecks);
     setCheckingAccess(false);
   }, [address, getAllDatasets, checkDataAccess]);
+
+  // Check access for all datasets when data changes
+  useEffect(() => {
+    if (address && uploadedDatasets.length > 0) {
+      checkAllDatasetAccess();
+    }
+  }, [address, uploadedDatasets, checkAllDatasetAccess]);
+
+  // Listen for access granted events
+  useEffect(() => {
+    const handleAccessGranted = (event: CustomEvent) => {
+      const { requesterAddress } = event.detail;
+      if (requesterAddress === address) {
+        // Refresh access status for this user
+        checkAllDatasetAccess();
+      }
+    };
+
+    window.addEventListener('accessGranted', handleAccessGranted as EventListener);
+
+    return () => {
+      window.removeEventListener('accessGranted', handleAccessGranted as EventListener);
+    };
+  }, [address, checkAllDatasetAccess]);
 
   const handleBuyDataset = async (dataset: Dataset) => {
     // For now, we'll use ETH as the currency type since the hook expects it
