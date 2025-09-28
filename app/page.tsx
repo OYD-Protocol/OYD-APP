@@ -9,14 +9,14 @@ export default function Page() {
   const { isConnected } = useAccount();
 
   const dummyOffers = [
-    "🔥 Premium Healthcare Dataset - 50% OFF - Limited Time!",
-    "💎 Financial Analytics Data - New Arrival - $299 ETH",
-    "⚡ Real-time IoT Sensor Data - Live Feed Available",
-    "🎯 Consumer Behavior Dataset - 10K+ Records - $199 USDC",
-    "🚀 AI Training Dataset - Computer Vision - $499 ETH",
-    "📊 Market Research Data - Global Trends - 30% OFF",
-    "🔬 Scientific Research Dataset - Peer Reviewed - $399 USDC",
-    "🌟 Social Media Analytics - Trending Now - $249 ETH"
+    // "🔥 Premium Healthcare Dataset - 50% OFF - Limited Time!",
+    // "💎 Financial Analytics Data - New Arrival - $299 ETH",
+    // "⚡ Real-time IoT Sensor Data - Live Feed Available",
+    // "🎯 Consumer Behavior Dataset - 10K+ Records - $199 USDC",
+    // "🚀 AI Training Dataset - Computer Vision - $499 ETH",
+    // "📊 Market Research Data - Global Trends - 30% OFF",
+    // "🔬 Scientific Research Dataset - Peer Reviewed - $399 USDC",
+    // "🌟 Social Media Analytics - Trending Now - $249 ETH"
   ];
 
   return (
@@ -24,11 +24,11 @@ export default function Page() {
       {/* Ticker Banner */}
       <div className="bg-blue-700 text-white h-8 overflow-hidden relative z-10">
         <div className="ticker-animation whitespace-nowrap text-sm py-1 px-4">
-          {dummyOffers.map((offer, index) => (
+          {/* {dummyOffers.map((offer, index) => (
             <span key={index} className="mx-8">
               {offer}
             </span>
-          ))}
+          ))} */}
         </div>
       </div>
 
@@ -47,14 +47,14 @@ export default function Page() {
             <div className="text-center">
               <div className="mb-8">
                 <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-800 mb-3">
-                  🚀 Build the Future of Data
+                  🚀 Build the Future of Ecommerce Consumer Data
                 </span>
               </div>
 
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-slate-900 mb-6 tracking-tight">
-                Decentralized Data
+                OYD Protocol
                 <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-                  Protocol
+                dataDAO of Ecommerce Consumer Behaviour Dataset
                 </span>
               </h1>
 
