@@ -16,7 +16,7 @@ interface UploadFormData {
 
 export default function UploadPage() {
   const { isConnected } = useAccount();
-  const { registerDataset, isLoading: isRegistering, error: registryError, isConfirmed, transactionHash } = useDatasetRegistry();
+  const { } = useDatasetRegistry();
 
   const [formData, setFormData] = useState<UploadFormData>({
     category: '',
@@ -42,7 +42,21 @@ export default function UploadPage() {
   } | null>(null);
 
   const [successData, setSuccessData] = useState<{
-    dataset: any;
+    dataset: {
+      id: string;
+      category: string;
+      companyName: string;
+      dataName: string;
+      dataDescription: string;
+      cid: string;
+      timestamp: string;
+      fileSize: number;
+      uploaderAddress: string;
+      uploadedBy: string;
+      oydCost: number;
+      downloads: number;
+      createdAt: string;
+    } | null;
     show: boolean;
   }>({
     dataset: null,
@@ -145,12 +159,12 @@ export default function UploadPage() {
   };
 
   // Progress callback for upload
-  const progressCallback = (progressData: any) => {
-    if (progressData?.total && progressData?.uploaded) {
-      let percentageDone = 100 - Number((progressData.total / progressData.uploaded).toFixed(2));
-      console.log(percentageDone);
-    }
-  };
+  // const progressCallback = (progressData: { uploaded: number; total: number }) => {
+  //   if (progressData?.total && progressData?.uploaded) {
+  //     const percentageDone = 100 - Number((progressData.total / progressData.uploaded).toFixed(2));
+  //     console.log(percentageDone);
+  //   }
+  // };
 
   // Helper function to format file size
   const formatFileSize = (bytes: number): string => {
@@ -441,9 +455,6 @@ export default function UploadPage() {
                       <p className="font-medium">{uploadStatus.message}</p>
                       {uploadStatus.cid && (
                         <p className="text-sm mt-1">CID: {uploadStatus.cid}</p>
-                      )}
-                      {transactionHash && (
-                        <p className="text-sm mt-1">Transaction: {transactionHash}</p>
                       )}
                       {uploadStatus.error && (
                         <p className="text-sm mt-1">{uploadStatus.error}</p>

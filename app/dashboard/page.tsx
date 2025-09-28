@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/app/components/Navbar';
 import { useBuyDataset } from '@/app/hooks/useBuyDataset';
 import { useDataAccess } from '@/app/hooks/useDataAccess';
+import { useAccount } from 'wagmi';
 import lighthouse from '@lighthouse-web3/sdk';
 import { ethers } from 'ethers';
 
@@ -199,10 +200,18 @@ const companyDatasets: { [key: string]: Dataset[] } = {
 };
 
 export default function Dashboard() {
+  const { address } = useAccount();
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccess, setShowSuccess] = useState<{
+    show: boolean;
+    type: 'download' | 'request';
+  }>({ show: false, type: 'download' });
   const [uploadedDatasets, setUploadedDatasets] = useState<UploadedDataset[]>([]);
+  const [datasetAccess, setDatasetAccess] = useState<{ [key: string]: boolean }>({});
+  const [checkingAccess, setCheckingAccess] = useState(false);
+  const [requestingAccess, setRequestingAccess] = useState<{ [key: string]: boolean }>({});
+  const [authCache, setAuthCache] = useState<{ [address: string]: { signedMessage: string; publicKey: string; timestamp: number } }>({});
   const [purchaseModal, setPurchaseModal] = useState<{
     show: boolean;
     dataset: Dataset | null;
@@ -214,7 +223,7 @@ export default function Dashboard() {
     isProcessing: false,
     error: null
   });
-  const { buyDataset, isLoading, error, hasPurchased } = useBuyDataset();
+  const { buyDataset, isLoading, error } = useBuyDataset();
   const { generateAccess } = useDataAccess();
 
   // Fetch uploaded datasets
@@ -236,11 +245,38 @@ export default function Dashboard() {
     // Set up polling to refresh data every 30 seconds
     const interval = setInterval(fetchUploadedDatasets, 30000);
     
-    return () => clearInterval(interval);
-  }, []);
+    // Listen for access granted events
+    const handleAccessGranted = (event: CustomEvent) => {
+      const { requesterAddress } = event.detail;
+      if (requesterAddress === address) {
+        // Refresh access status for this user
+        checkAllDatasetAccess();
+      }
+    };
+
+    window.addEventListener('accessGranted', handleAccessGranted as EventListener);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('accessGranted', handleAccessGranted as EventListener);
+    };
+  }, [address]);
+
+  // Check access for all datasets when data changes
+  useEffect(() => {
+    if (address && uploadedDatasets.length > 0) {
+      checkAllDatasetAccess();
+    }
+  }, [address, uploadedDatasets]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear access cache when wallet address changes
+  useEffect(() => {
+    setDatasetAccess({}); // Clear previous access data
+    setRequestingAccess({}); // Clear previous request states
+  }, [address]);
 
   // Get datasets - prioritize real data over mock data
-  const getAllDatasets = () => {
+  const getAllDatasets = useCallback(() => {
     const allDatasets: { [key: string]: Dataset[] } = {};
     
     // Initialize empty arrays for all categories
@@ -294,9 +330,9 @@ export default function Dashboard() {
         }
       });
     }
-    
+
     return allDatasets;
-  };
+  }, [uploadedDatasets]);
 
   // Helper function to format file size
   const formatFileSize = (bytes: number): string => {
@@ -308,25 +344,48 @@ export default function Dashboard() {
   };
 
   // Encryption signature for decryption
-  const encryptionSignature = async () => {
+  const encryptionSignature = useCallback(async () => {
     if (!window.ethereum) {
       throw new Error('Please install MetaMask!');
     }
     
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    const address = await signer.getAddress();
-    const messageRequested = (await lighthouse.getAuthMessage(address)).data.message;
+    const currentAddress = await signer.getAddress();
+    
+    // Check if we have a cached signature for this address (valid for 1 hour)
+    const cached = authCache[currentAddress];
+    const oneHour = 60 * 60 * 1000;
+    
+    if (cached && (Date.now() - cached.timestamp) < oneHour) {
+      return {
+        signedMessage: cached.signedMessage,
+        publicKey: cached.publicKey
+      };
+    }
+    
+    // Get new signature if no cache or expired
+    const messageRequested = (await lighthouse.getAuthMessage(currentAddress)).data.message;
     const signedMessage = await signer.signMessage(messageRequested || '');
+    
+    // Cache the signature
+    setAuthCache(prev => ({
+      ...prev,
+      [currentAddress]: {
+        signedMessage,
+        publicKey: currentAddress,
+        timestamp: Date.now()
+      }
+    }));
     
     return {
       signedMessage: signedMessage,
-      publicKey: address
+      publicKey: currentAddress
     };
-  };
+  }, [authCache]);
 
-  // Show purchase confirmation modal
-  const showPurchaseModal = (dataset: Dataset) => {
+  // Show purchase confirmation modal (only for downloads)
+  const showDownloadModal = (dataset: Dataset) => {
     setPurchaseModal({
       show: true,
       dataset,
@@ -335,68 +394,55 @@ export default function Dashboard() {
     });
   };
 
-  // Handle direct decrypt/download (skip payment for now)
+  // Handle buy request (create data request)
+  const handleBuyRequest = async (dataset: Dataset) => {
+    setRequestingAccess(prev => ({ ...prev, [dataset.id]: true }));
+    
+    try {
+      const requestPayload = {
+        datasetId: dataset.id,
+        datasetName: dataset.name,
+        datasetDescription: dataset.description,
+        cid: dataset.cid,
+        requesterAddress: address!,
+        uploaderAddress: dataset.uploadedBy,
+        category: dataset.category,
+        size: dataset.size,
+        oydCost: dataset.oydCost
+      };
+
+      const response = await fetch('/api/data-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create data request');
+      }
+
+      // Show request sent message
+      setShowSuccess({ show: true, type: 'request' });
+      setTimeout(() => {
+        setShowSuccess({ show: false, type: 'request' });
+      }, 3000);
+
+    } catch (error) {
+      console.error('Buy request error:', error);
+      alert('Failed to send request. Please try again.');
+    } finally {
+      setRequestingAccess(prev => ({ ...prev, [dataset.id]: false }));
+    }
+  };
+
+  // Handle direct download (only called when user has access)
   const handlePurchaseAndDownload = async (dataset: Dataset) => {
     setPurchaseModal(prev => ({ ...prev, isProcessing: true, error: null }));
 
     try {
-      // Skip payment step - directly decrypt and download
-      const cid = dataset.cid;
-      const { publicKey, signedMessage } = await encryptionSignature();
-      
-      // Fetch encryption key
-      const keyObject = await lighthouse.fetchEncryptionKey(
-        cid,
-        publicKey,
-        signedMessage
-      );
-
-      // Decrypt file - try different file types
-      let decrypted;
-      let fileName = `${dataset.name.replace(/[^a-zA-Z0-9]/g, '_')}-${dataset.id}`;
-      
-      // Try to decrypt without specifying MIME type first (most reliable)
-      try {
-        decrypted = await lighthouse.decryptFile(cid, keyObject.data.key || '');
-        
-        // Try to determine file type from content
-        const text = await decrypted.text();
-        try {
-          JSON.parse(text);
-          fileName += '.json';
-        } catch {
-          fileName += '.txt';
-        }
-        
-        // Recreate blob with detected type
-        decrypted = new Blob([text], { type: fileName.endsWith('.json') ? 'application/json' : 'text/plain' });
-        
-      } catch (error) {
-        console.error('Decryption failed:', error);
-        throw new Error('Failed to decrypt file. Please check your access permissions.');
-      }
-      
-      // Create download link and trigger download
-      const url = URL.createObjectURL(decrypted);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up URL
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      
-      // Close modal and show success
-      setPurchaseModal({ show: false, dataset: null, isProcessing: false, error: null });
-      setShowSuccess(true);
-      
-      // Auto-hide success message after 3 seconds
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 3000);
-      
+      await handleDirectDownload(dataset);
     } catch (error) {
       console.error('Download error:', error);
       setPurchaseModal(prev => ({
@@ -407,6 +453,104 @@ export default function Dashboard() {
     }
   };
 
+  // Direct download function
+  const handleDirectDownload = async (dataset: Dataset) => {
+    const cid = dataset.cid;
+    const { publicKey, signedMessage } = await encryptionSignature();
+    
+    // Fetch encryption key
+    const keyObject = await lighthouse.fetchEncryptionKey(
+      cid,
+      publicKey,
+      signedMessage
+    );
+
+    // Decrypt file
+    let decrypted;
+    let fileName = `${dataset.name.replace(/[^a-zA-Z0-9]/g, '_')}-${dataset.id}`;
+    
+    try {
+      decrypted = await lighthouse.decryptFile(cid, keyObject.data.key || '');
+      
+      // Try to determine file type from content
+      const text = await decrypted.text();
+      try {
+        JSON.parse(text);
+        fileName += '.json';
+      } catch {
+        fileName += '.txt';
+      }
+      
+      // Recreate blob with detected type
+      decrypted = new Blob([text], { type: fileName.endsWith('.json') ? 'application/json' : 'text/plain' });
+      
+    } catch (error) {
+      console.error('Decryption failed:', error);
+      throw new Error('Failed to decrypt file. Please check your access permissions.');
+    }
+    
+    // Create download link and trigger download
+    const url = URL.createObjectURL(decrypted);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up URL
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    
+    // Close modal and show success
+    setPurchaseModal({ show: false, dataset: null, isProcessing: false, error: null });
+    setShowSuccess({ show: true, type: 'download' });
+    
+    // Auto-hide success message after 3 seconds
+    setTimeout(() => {
+      setShowSuccess({ show: false, type: 'download' });
+    }, 3000);
+  };
+
+  // Check if user has access to data
+  const checkDataAccess = useCallback(async (cid: string): Promise<boolean> => {
+    try {
+      const { publicKey, signedMessage } = await encryptionSignature();
+      
+      // Try to fetch encryption key - if successful, user has access
+      await lighthouse.fetchEncryptionKey(cid, publicKey, signedMessage);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [encryptionSignature]);
+
+  // Check access for all datasets
+  const checkAllDatasetAccess = useCallback(async () => {
+    setCheckingAccess(true);
+    const allDatasets = getAllDatasets();
+    const accessChecks: { [key: string]: boolean } = {};
+
+    for (const categoryKey of Object.keys(allDatasets)) {
+      for (const dataset of allDatasets[categoryKey]) {
+        // Skip access check for own datasets
+        if (dataset.uploadedBy === address) {
+          accessChecks[dataset.id] = true;
+          continue;
+        }
+
+        try {
+          const hasAccess = await checkDataAccess(dataset.cid);
+          accessChecks[dataset.id] = hasAccess;
+        } catch {
+          accessChecks[dataset.id] = false;
+        }
+      }
+    }
+
+    setDatasetAccess(accessChecks);
+    setCheckingAccess(false);
+  }, [address, getAllDatasets, checkDataAccess]);
+
   const handleBuyDataset = async (dataset: Dataset) => {
     // For now, we'll use ETH as the currency type since the hook expects it
     // In a real implementation, you'd update the hook to support OYD
@@ -415,8 +559,8 @@ export default function Dashboard() {
     if (success) {
       await generateAccess(dataset.id, dataset.cid);
       setSelectedDataset(null);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 5000);
+      setShowSuccess({ show: true, type: 'download' });
+      setTimeout(() => setShowSuccess({ show: false, type: 'download' }), 5000);
     }
   };
 
@@ -430,15 +574,15 @@ export default function Dashboard() {
     return colors[category as keyof typeof colors] || 'from-slate-500 to-slate-600';
   };
 
-  const getCategoryBadgeColor = (category: string) => {
-    const colors = {
-      Supermart: 'bg-blue-100 text-blue-700 border-blue-200',
-      'Groceries and Food': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      Pharmacy: 'bg-rose-100 text-rose-700 border-rose-200',
-      Apparels: 'bg-purple-100 text-purple-700 border-purple-200'
-    };
-    return colors[category as keyof typeof colors] || 'bg-slate-100 text-slate-700 border-slate-200';
-  };
+  // const getCategoryBadgeColor = (category: string) => {
+  //   const colors = {
+  //     Supermart: 'bg-blue-100 text-blue-700 border-blue-200',
+  //     'Groceries and Food': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  //     Pharmacy: 'bg-rose-100 text-rose-700 border-rose-200',
+  //     Apparels: 'bg-purple-100 text-purple-700 border-purple-200'
+  //   };
+  //   return colors[category as keyof typeof colors] || 'bg-slate-100 text-slate-700 border-slate-200';
+  // };
 
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -478,15 +622,36 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-            <button
-              onClick={fetchUploadedDatasets}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-              <span>Refresh</span>
-            </button>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={fetchUploadedDatasets}
+                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                    </svg>
+                    <span>Refresh Data</span>
+                  </button>
+                  <button
+                    onClick={checkAllDatasetAccess}
+                    disabled={checkingAccess}
+                    className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {checkingAccess ? (
+                      <>
+                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                        <span>Checking...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                        <span>Check Access</span>
+                      </>
+                    )}
+                  </button>
+            </div>
             <div className="hidden md:flex items-center space-x-4">
               {selectedCategory && (
                 <button
@@ -598,7 +763,7 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {companyData.map((dataset, index) => (
+                        {companyData.map((dataset) => (
                           <tr key={dataset.id} className="hover:bg-slate-50 transition-colors">
                             <td className="py-4 px-6">
                               <div className="font-semibold text-slate-900 text-sm">{dataset.name}</div>
@@ -653,19 +818,27 @@ export default function Dashboard() {
                               {dataset.seller}
                             </td>
                             <td className="py-4 px-6">
-                {hasPurchased(dataset.id) ? (
-                                <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                                  Owned
-                  </div>
+                              {datasetAccess[dataset.id] ? (
+                                <button
+                                  onClick={() => showDownloadModal(dataset)}
+                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                >
+                                  Download
+                                </button>
                 ) : (
                   <button
-                              onClick={() => showPurchaseModal(dataset)}
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  >
-                              Download
+                                  onClick={() => handleBuyRequest(dataset)}
+                                  disabled={requestingAccess[dataset.id]}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {requestingAccess[dataset.id] ? (
+                                    <div className="flex items-center">
+                                      <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full mr-1"></div>
+                                      Requesting...
+                                    </div>
+                                  ) : (
+                                    'Buy'
+                                  )}
                   </button>
                 )}
                             </td>
@@ -709,7 +882,7 @@ export default function Dashboard() {
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
                 <div className="text-center py-16">
                   <div className="text-slate-500 text-xl mb-2">No datasets available</div>
-                  <div className="text-slate-400 text-sm">Companies in this category haven't uploaded any datasets yet</div>
+                  <div className="text-slate-400 text-sm">Companies in this category haven&apos;t uploaded any datasets yet</div>
                 </div>
               </div>
             )}
@@ -802,7 +975,7 @@ export default function Dashboard() {
         )}
 
         {/* Success Notification */}
-        {showSuccess && (
+        {showSuccess.show && (
           <div className="fixed top-4 right-4 bg-white border border-emerald-200 shadow-xl rounded-xl p-4 z-50 animate-in slide-in-from-right duration-300">
             <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -812,12 +985,19 @@ export default function Dashboard() {
                 </svg>
               </div>
               <div>
-                  <div className="font-semibold text-slate-900">Download Successful!</div>
-                  <div className="text-sm text-slate-600">Dataset has been downloaded to your device</div>
+                  <div className="font-semibold text-slate-900">
+                    {showSuccess.type === 'download' ? 'Download Successful!' : 'Request Sent!'}
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    {showSuccess.type === 'download' 
+                      ? 'Dataset has been downloaded to your device'
+                      : 'Data access request has been sent to the uploader'
+                    }
+                  </div>
                 </div>
               </div>
               <button
-                onClick={() => setShowSuccess(false)}
+                onClick={() => setShowSuccess({ show: false, type: 'download' })}
                 className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">

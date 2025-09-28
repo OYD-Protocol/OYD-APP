@@ -8,16 +8,16 @@ import { useAccount } from 'wagmi';
 export default function Page() {
   const { isConnected } = useAccount();
 
-  const dummyOffers = [
-    // "🔥 Premium Healthcare Dataset - 50% OFF - Limited Time!",
-    // "💎 Financial Analytics Data - New Arrival - $299 ETH",
-    // "⚡ Real-time IoT Sensor Data - Live Feed Available",
-    // "🎯 Consumer Behavior Dataset - 10K+ Records - $199 USDC",
-    // "🚀 AI Training Dataset - Computer Vision - $499 ETH",
-    // "📊 Market Research Data - Global Trends - 30% OFF",
-    // "🔬 Scientific Research Dataset - Peer Reviewed - $399 USDC",
-    // "🌟 Social Media Analytics - Trending Now - $249 ETH"
-  ];
+  // const dummyOffers = [
+  //   "🔥 Premium Healthcare Dataset - 50% OFF - Limited Time!",
+  //   "💎 Financial Analytics Data - New Arrival - $299 ETH",
+  //   "⚡ Real-time IoT Sensor Data - Live Feed Available",
+  //   "🎯 Consumer Behavior Dataset - 10K+ Records - $199 USDC",
+  //   "🚀 AI Training Dataset - Computer Vision - $499 ETH",
+  //   "📊 Market Research Data - Global Trends - 30% OFF",
+  //   "🔬 Scientific Research Dataset - Peer Reviewed - $399 USDC",
+  //   "🌟 Social Media Analytics - Trending Now - $249 ETH"
+  // ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
