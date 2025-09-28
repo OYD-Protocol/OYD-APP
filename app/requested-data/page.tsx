@@ -94,11 +94,11 @@ export default function RequestedDataPage() {
     const signer = await provider.getSigner();
     const currentAddress = await signer.getAddress();
     
-    // Check if we have a cached signature for this address (valid for 1 hour)
+    // Check if we have a cached signature for this address (valid for 4 hours)
     const cached = authCache[currentAddress];
-    const oneHour = 60 * 60 * 1000;
+    const fourHours = 4 * 60 * 60 * 1000;
     
-    if (cached && (Date.now() - cached.timestamp) < oneHour) {
+    if (cached && (Date.now() - cached.timestamp) < fourHours) {
       return {
         signedMessage: cached.signedMessage,
         publicKey: cached.publicKey
