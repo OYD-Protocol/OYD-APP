@@ -19,6 +19,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const uploaderAddress = searchParams.get('uploaderAddress');
 
+    console.log('GET data-requests - uploaderAddress:', uploaderAddress);
+
     if (!uploaderAddress) {
       return NextResponse.json(
         { error: 'uploaderAddress parameter is required' },
@@ -26,19 +28,35 @@ export async function GET(request: Request) {
       );
     }
 
+    console.log('Querying Supabase for requests...');
+    console.log('Looking for uploader_address:', uploaderAddress);
+    
+    // Normalize address to lowercase for consistent matching
+    const normalizedAddress = uploaderAddress.toLowerCase();
+    console.log('Normalized address:', normalizedAddress);
+    
     const { data: requests, error } = await supabase
       .from('data_requests')
       .select('*')
-      .eq('uploader_address', uploaderAddress)
+      .eq('uploader_address', normalizedAddress)
       .order('requested_at', { ascending: false });
+
+    console.log('Query result:', { requestCount: requests?.length, error });
 
     if (error) {
       console.error('Supabase error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       return NextResponse.json(
-        { error: 'Failed to fetch data requests' },
+        { 
+          error: 'Failed to fetch data requests',
+          details: error.message,
+          hint: error.hint || 'Make sure the data_requests table exists in your Supabase database'
+        },
         { status: 500 }
       );
     }
+
+    console.log(`Found ${requests?.length || 0} requests for uploader ${uploaderAddress}`);
 
     return NextResponse.json({
       success: true,
@@ -57,6 +75,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const payload: DataRequestPayload = await request.json();
+    console.log('POST data-requests - payload:', payload);
     
     const requestRecord = {
       id: `req-${Date.now()}`,
@@ -64,8 +83,8 @@ export async function POST(request: Request) {
       dataset_name: payload.datasetName,
       dataset_description: payload.datasetDescription,
       cid: payload.cid,
-      requester_address: payload.requesterAddress,
-      uploader_address: payload.uploaderAddress,
+      requester_address: payload.requesterAddress.toLowerCase(), // Normalize to lowercase
+      uploader_address: payload.uploaderAddress.toLowerCase(), // Normalize to lowercase
       category: payload.category,
       size: payload.size,
       oyd_cost: payload.oydCost,
@@ -74,19 +93,30 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString()
     };
 
+    console.log('Inserting request record:', requestRecord);
+
     const { data, error } = await supabase
       .from('data_requests')
       .insert([requestRecord])
       .select()
       .single();
 
+    console.log('Supabase insert result:', { data, error });
+
     if (error) {
       console.error('Supabase insert error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       return NextResponse.json(
-        { error: 'Failed to create data request' },
+        { 
+          error: 'Failed to create data request',
+          details: error.message,
+          hint: error.hint || 'Make sure the data_requests table exists with correct schema'
+        },
         { status: 500 }
       );
     }
+
+    console.log('Data request created successfully:', data);
 
     return NextResponse.json({
       success: true,

@@ -245,16 +245,36 @@ export default function Dashboard() {
     // Set up polling to refresh data every 30 seconds
     const interval = setInterval(fetchUploadedDatasets, 30000);
     
+<<<<<<< HEAD
+=======
+    // Listen for access granted events
+    const handleAccessGranted = (event: CustomEvent) => {
+      const { requesterAddress } = event.detail;
+      if (requesterAddress === address) {
+        // Clear access cache so user can manually refresh if needed
+        setDatasetAccess({});
+      }
+    };
+
+    window.addEventListener('accessGranted', handleAccessGranted as EventListener);
+    
+>>>>>>> 7b9b630428eee185bf0ebc554c6a7eb27dae2455
     return () => {
       clearInterval(interval);
     };
   }, [address]);
 
+<<<<<<< HEAD
+=======
+  // Note: Removed automatic access checking to prevent background wallet signing
+  // Access is now only checked when user manually clicks "Refresh Access" button
+>>>>>>> 7b9b630428eee185bf0ebc554c6a7eb27dae2455
 
   // Clear access cache when wallet address changes
   useEffect(() => {
     setDatasetAccess({}); // Clear previous access data
     setRequestingAccess({}); // Clear previous request states
+    setCheckingAccess(false); // Stop any ongoing checks
   }, [address]);
 
   // Get datasets - prioritize real data over mock data
@@ -335,11 +355,11 @@ export default function Dashboard() {
     const signer = await provider.getSigner();
     const currentAddress = await signer.getAddress();
     
-    // Check if we have a cached signature for this address (valid for 1 hour)
+    // Check if we have a cached signature for this address (valid for 4 hours)
     const cached = authCache[currentAddress];
-    const oneHour = 60 * 60 * 1000;
+    const fourHours = 4 * 60 * 60 * 1000;
     
-    if (cached && (Date.now() - cached.timestamp) < oneHour) {
+    if (cached && (Date.now() - cached.timestamp) < fourHours) {
       return {
         signedMessage: cached.signedMessage,
         publicKey: cached.publicKey
@@ -378,6 +398,12 @@ export default function Dashboard() {
 
   // Handle buy request (create data request)
   const handleBuyRequest = async (dataset: Dataset) => {
+    // Prevent users from requesting access to their own data
+    if (dataset.uploadedBy === address) {
+      alert('You cannot request access to your own dataset. You already have full access.');
+      return;
+    }
+
     setRequestingAccess(prev => ({ ...prev, [dataset.id]: true }));
     
     try {
@@ -393,6 +419,8 @@ export default function Dashboard() {
         oydCost: dataset.oydCost
       };
 
+      console.log('Sending data request:', requestPayload);
+      
       const response = await fetch('/api/data-requests', {
         method: 'POST',
         headers: {
@@ -401,8 +429,12 @@ export default function Dashboard() {
         body: JSON.stringify(requestPayload),
       });
 
+      console.log('Response status:', response.status);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+
       if (!response.ok) {
-        throw new Error('Failed to create data request');
+        throw new Error(`Failed to create data request: ${responseData.error || 'Unknown error'}`);
       }
 
       // Show request sent message
@@ -416,6 +448,29 @@ export default function Dashboard() {
       alert('Failed to send request. Please try again.');
     } finally {
       setRequestingAccess(prev => ({ ...prev, [dataset.id]: false }));
+    }
+  };
+
+  // Handle try download - checks access first, then downloads or shows buy option
+  const handleTryDownload = async (dataset: Dataset) => {
+    try {
+      // Check if user has access to this specific dataset
+      const hasAccess = await checkDataAccess(dataset.cid);
+      
+      // Update the access state for this dataset
+      setDatasetAccess(prev => ({ ...prev, [dataset.id]: hasAccess }));
+      
+      if (hasAccess) {
+        // User has access, proceed to download
+        showDownloadModal(dataset);
+      } else {
+        // User doesn't have access, they can request it
+        // The button will automatically change to "Buy" due to state update
+      }
+    } catch (error) {
+      console.error('Access check failed:', error);
+      // On error, assume no access
+      setDatasetAccess(prev => ({ ...prev, [dataset.id]: false }));
     }
   };
 
@@ -498,28 +553,67 @@ export default function Dashboard() {
     try {
       const { publicKey, signedMessage } = await encryptionSignature();
       
-      // Try to fetch encryption key - if successful, user has access
+      // Method 1: Check access conditions first
+      try {
+        const accessConditions = await lighthouse.getAccessConditions(cid);
+        console.log('Access conditions for CID', cid, ':', accessConditions);
+        
+        // Check if current user is in the sharedTo list or is the owner
+        if (accessConditions.data) {
+          const { sharedTo, owner } = accessConditions.data;
+          const currentAddress = publicKey.toLowerCase();
+          
+          // User is owner
+          if (owner && owner.toLowerCase() === currentAddress) {
+            console.log('User is owner of', cid);
+            return true;
+          }
+          
+          // User is in shared list
+          if (sharedTo && Array.isArray(sharedTo)) {
+            const hasAccess = sharedTo.some(addr => addr.toLowerCase() === currentAddress);
+            if (hasAccess) {
+              console.log('User has shared access to', cid);
+              return true;
+            }
+          }
+        }
+      } catch (conditionError) {
+        console.log('Could not get access conditions, trying direct key fetch:', conditionError);
+      }
+      
+      // Method 2: Try to fetch encryption key - if successful, user has access
       await lighthouse.fetchEncryptionKey(cid, publicKey, signedMessage);
+      console.log('User can fetch encryption key for', cid);
       return true;
-    } catch {
+    } catch (error) {
+      console.log('No access to', cid, ':', error);
       return false;
     }
   }, [encryptionSignature]);
 
-  // Check access for all datasets
+  // Check access for all datasets (optimized)
   const checkAllDatasetAccess = useCallback(async () => {
+    if (!address) return;
+    
     setCheckingAccess(true);
     const allDatasets = getAllDatasets();
-    const accessChecks: { [key: string]: boolean } = {};
+    const accessChecks: { [key: string]: boolean } = { ...datasetAccess }; // Start with existing checks
 
     for (const categoryKey of Object.keys(allDatasets)) {
       for (const dataset of allDatasets[categoryKey]) {
-        // Skip access check for own datasets
+        // Skip if already checked and cached
+        if (accessChecks[dataset.id] !== undefined) {
+          continue;
+        }
+
+        // Owner always has access - no need to check
         if (dataset.uploadedBy === address) {
           accessChecks[dataset.id] = true;
           continue;
         }
 
+        // Only check access for external datasets we haven't checked
         try {
           const hasAccess = await checkDataAccess(dataset.cid);
           accessChecks[dataset.id] = hasAccess;
@@ -531,7 +625,7 @@ export default function Dashboard() {
 
     setDatasetAccess(accessChecks);
     setCheckingAccess(false);
-  }, [address, getAllDatasets, checkDataAccess]);
+  }, [address, getAllDatasets, checkDataAccess, datasetAccess]);
 
   // Check access for all datasets when data changes
   useEffect(() => {
@@ -627,6 +721,10 @@ export default function Dashboard() {
                   Showing demo data (upload a dataset to see real data)
                 </div>
               )}
+              <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                <div className="w-2 h-2 bg-purple-400 rounded-full mr-2"></div>
+                Click &quot;Try Download&quot; to check access or &quot;Refresh Access&quot; to check all
+              </div>
             </div>
                 <div className="flex space-x-2">
                   <button
@@ -639,9 +737,12 @@ export default function Dashboard() {
                     <span>Refresh Data</span>
                   </button>
                   <button
-                    onClick={checkAllDatasetAccess}
+                    onClick={() => {
+                      setDatasetAccess({}); // Clear cache to force recheck
+                      checkAllDatasetAccess();
+                    }}
                     disabled={checkingAccess}
-                    className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center space-x-2 bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {checkingAccess ? (
                       <>
@@ -651,9 +752,9 @@ export default function Dashboard() {
                     ) : (
                       <>
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                          <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                         </svg>
-                        <span>Check Access</span>
+                        <span>Refresh Access</span>
                       </>
                     )}
                   </button>
@@ -824,15 +925,26 @@ export default function Dashboard() {
                               {dataset.seller}
                             </td>
                             <td className="py-4 px-6">
-                              {datasetAccess[dataset.id] ? (
+                              {/* Show different buttons based on ownership */}
+                              {dataset.uploadedBy === address ? (
+                                // Owner can always download
                                 <button
                                   onClick={() => showDownloadModal(dataset)}
                                   className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                                 >
                                   Download
                                 </button>
-                ) : (
-                  <button
+                              ) : datasetAccess[dataset.id] === true ? (
+                                // Non-owner with confirmed access can download
+                                <button
+                                  onClick={() => showDownloadModal(dataset)}
+                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                >
+                                  Download
+                                </button>
+                              ) : datasetAccess[dataset.id] === false ? (
+                                // Non-owner with confirmed no access can request
+                                <button
                                   onClick={() => handleBuyRequest(dataset)}
                                   disabled={requestingAccess[dataset.id]}
                                   className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -841,10 +953,18 @@ export default function Dashboard() {
                                     <div className="flex items-center">
                                       <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full mr-1"></div>
                                       Requesting...
-                                    </div>
-                                  ) : (
+                  </div>
+                ) : (
                                     'Buy'
                                   )}
+                                </button>
+                              ) : (
+                                // Unknown access status - show try download button
+                  <button
+                                  onClick={() => handleTryDownload(dataset)}
+                                  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  >
+                                  Try Download
                   </button>
                 )}
                             </td>
