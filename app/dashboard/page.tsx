@@ -414,6 +414,8 @@ export default function Dashboard() {
         oydCost: dataset.oydCost
       };
 
+      console.log('Sending data request:', requestPayload);
+      
       const response = await fetch('/api/data-requests', {
         method: 'POST',
         headers: {
@@ -422,8 +424,12 @@ export default function Dashboard() {
         body: JSON.stringify(requestPayload),
       });
 
+      console.log('Response status:', response.status);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+
       if (!response.ok) {
-        throw new Error('Failed to create data request');
+        throw new Error(`Failed to create data request: ${responseData.error || 'Unknown error'}`);
       }
 
       // Show request sent message
@@ -542,10 +548,41 @@ export default function Dashboard() {
     try {
       const { publicKey, signedMessage } = await encryptionSignature();
       
-      // Try to fetch encryption key - if successful, user has access
+      // Method 1: Check access conditions first
+      try {
+        const accessConditions = await lighthouse.getAccessConditions(cid);
+        console.log('Access conditions for CID', cid, ':', accessConditions);
+        
+        // Check if current user is in the sharedTo list or is the owner
+        if (accessConditions.data) {
+          const { sharedTo, owner } = accessConditions.data;
+          const currentAddress = publicKey.toLowerCase();
+          
+          // User is owner
+          if (owner && owner.toLowerCase() === currentAddress) {
+            console.log('User is owner of', cid);
+            return true;
+          }
+          
+          // User is in shared list
+          if (sharedTo && Array.isArray(sharedTo)) {
+            const hasAccess = sharedTo.some(addr => addr.toLowerCase() === currentAddress);
+            if (hasAccess) {
+              console.log('User has shared access to', cid);
+              return true;
+            }
+          }
+        }
+      } catch (conditionError) {
+        console.log('Could not get access conditions, trying direct key fetch:', conditionError);
+      }
+      
+      // Method 2: Try to fetch encryption key - if successful, user has access
       await lighthouse.fetchEncryptionKey(cid, publicKey, signedMessage);
+      console.log('User can fetch encryption key for', cid);
       return true;
-    } catch {
+    } catch (error) {
+      console.log('No access to', cid, ':', error);
       return false;
     }
   }, [encryptionSignature]);

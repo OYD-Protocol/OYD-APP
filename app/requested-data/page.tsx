@@ -42,8 +42,12 @@ export default function RequestedDataPage() {
 
   const fetchRequests = useCallback(async () => {
     try {
+      console.log('Fetching requests for uploader:', address);
       const response = await fetch(`/api/data-requests?uploaderAddress=${address}`);
       const data = await response.json();
+      
+      console.log('Fetch response status:', response.status);
+      console.log('Fetch response data:', data);
       
       if (data.success) {
         // Transform database format to component format
@@ -75,7 +79,10 @@ export default function RequestedDataPage() {
           oydCost: req.oyd_cost
         }));
         
+        console.log('Transformed requests:', transformedRequests);
         setRequests(transformedRequests);
+      } else {
+        console.error('API returned failure:', data);
       }
     } catch (error) {
       console.error('Failed to fetch requests:', error);
@@ -132,6 +139,13 @@ export default function RequestedDataPage() {
     try {
       const { publicKey, signedMessage } = await encryptionSignature();
       
+      console.log('Sharing file with details:', {
+        owner: publicKey,
+        receivers: [request.requesterAddress],
+        cid: request.cid,
+        hasSignature: !!signedMessage
+      });
+      
       const shareResponse = await lighthouse.shareFile(
         publicKey,
         [request.requesterAddress],
@@ -141,24 +155,41 @@ export default function RequestedDataPage() {
 
       console.log('Share response:', shareResponse);
 
-      // Update request status in database
-      await updateRequestStatus(request.id, 'approved');
+      // Verify the sharing was successful
+      if (shareResponse.data && shareResponse.data.status === 'Success') {
+        console.log('✅ File sharing successful!');
+        
+        // Check access conditions after sharing
+        try {
+          const accessConditions = await lighthouse.getAccessConditions(request.cid);
+          console.log('Updated access conditions:', accessConditions);
+        } catch (condError) {
+          console.log('Could not verify access conditions:', condError);
+        }
+        
+        // Update request status in database
+        await updateRequestStatus(request.id, 'approved');
 
-      // Update local state
-      setRequests(prev => prev.map(req => 
-        req.id === request.id 
-          ? { ...req, status: 'approved' as const }
-          : req
-      ));
+        // Update local state
+        setRequests(prev => prev.map(req => 
+          req.id === request.id 
+            ? { ...req, status: 'approved' as const }
+            : req
+        ));
 
-      // Notify that access has been granted (this will refresh access in dashboard)
-      window.dispatchEvent(new CustomEvent('accessGranted', { 
-        detail: { cid: request.cid, requesterAddress: request.requesterAddress }
-      }));
+        // Notify that access has been granted (this will refresh access in dashboard)
+        window.dispatchEvent(new CustomEvent('accessGranted', { 
+          detail: { cid: request.cid, requesterAddress: request.requesterAddress }
+        }));
+        
+        alert(`Successfully shared file with ${request.requesterAddress}`);
+      } else {
+        throw new Error('Sharing response indicates failure');
+      }
 
     } catch (error) {
       console.error('Error sharing file:', error);
-      alert('Failed to share file. Please try again.');
+      alert(`Failed to share file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setProcessingId(null);
     }
