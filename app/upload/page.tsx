@@ -41,6 +41,14 @@ export default function UploadPage() {
     oydCoins: number;
   } | null>(null);
 
+  const [successData, setSuccessData] = useState<{
+    dataset: any;
+    show: boolean;
+  }>({
+    dataset: null,
+    show: false
+  });
+
   // Categories and companies matching dashboard
   const categories = [
     {
@@ -247,6 +255,12 @@ export default function UploadPage() {
         cid: cid
       });
 
+      // Show success modal with dataset info
+      setSuccessData({
+        dataset: saveResult.dataset,
+        show: true
+      });
+
       // Reset form
       setFormData({
         category: '',
@@ -255,6 +269,9 @@ export default function UploadPage() {
         dataDescription: '',
         file: null,
       });
+
+      // Reset file info
+      setFileInfo(null);
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -450,6 +467,79 @@ export default function UploadPage() {
             </button>
           </form>
         </div>
+
+        {/* Success Modal */}
+        {successData.show && successData.dataset && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Upload Successful! 🎉</h3>
+                <p className="text-slate-600">Your dataset has been encrypted and uploaded to IPFS</p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6">
+                <h4 className="font-semibold text-slate-900 mb-3">Dataset Information</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Company:</span>
+                    <span className="font-medium text-slate-900">{successData.dataset.companyName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Dataset Name:</span>
+                    <span className="font-medium text-slate-900">{successData.dataset.dataName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Category:</span>
+                    <span className="font-medium text-slate-900">{successData.dataset.category}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">File Size:</span>
+                    <span className="font-medium text-slate-900">{formatFileSize(successData.dataset.fileSize)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">CID:</span>
+                    <span className="font-mono text-xs text-slate-700">{successData.dataset.cid.slice(0, 20)}...</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* OYD Coins Minted */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6">
+                <div className="text-center">
+                  <div className="text-sm font-medium text-blue-900 mb-1">OYD Datacoins Minted</div>
+                  <div className="text-3xl font-bold text-blue-600 mb-1">
+                    {successData.dataset.oydCost.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-blue-700">OYD datacoins (1 KB = 1 OYD)</div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setSuccessData({ dataset: null, show: false })}
+                  className="flex-1 bg-slate-100 text-slate-700 py-3 px-4 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setSuccessData({ dataset: null, show: false });
+                    // Navigate to dashboard to see the uploaded dataset
+                    window.location.href = '/dashboard';
+                  }}
+                  className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  View in Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
