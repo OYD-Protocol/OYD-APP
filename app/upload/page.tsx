@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { useAccount } from 'wagmi';
 import Navbar from '@/app/components/Navbar';
 import { useDatasetRegistry } from '@/app/hooks/useDatasetRegistry';
+import lighthouse from '@lighthouse-web3/sdk';
 
 interface UploadFormData {
-  name: string;
-  description: string;
-  priceETH: string;
-  priceUSDC: string;
   category: string;
+  companyName: string;
+  dataName: string;
+  dataDescription: string;
   file: File | null;
 }
 
@@ -19,11 +19,10 @@ export default function UploadPage() {
   const { registerDataset, isLoading: isRegistering, error: registryError, isConfirmed, transactionHash } = useDatasetRegistry();
 
   const [formData, setFormData] = useState<UploadFormData>({
-    name: '',
-    description: '',
-    priceETH: '',
-    priceUSDC: '',
     category: '',
+    companyName: '',
+    dataName: '',
+    dataDescription: '',
     file: null,
   });
 
@@ -37,23 +36,50 @@ export default function UploadPage() {
     message: '',
   });
 
+  // Categories and companies matching dashboard
   const categories = [
-    'Environmental',
-    'Business',
-    'Healthcare',
-    'Finance',
-    'Technology',
-    'Education',
-    'Research',
-    'Other'
+    {
+      id: 'supermart',
+      name: 'Supermart',
+      companies: ['Flipkart', 'Amazon']
+    },
+    {
+      id: 'groceries',
+      name: 'Groceries and Food',
+      companies: ['Zepto', 'Blinkit', 'Swiggy', 'Zomato']
+    },
+    {
+      id: 'pharmacy',
+      name: 'Pharmacy',
+      companies: ['1mg']
+    },
+    {
+      id: 'apparels',
+      name: 'Apparels',
+      companies: ['Myntra', 'Ajio']
+    }
   ];
+
+  const getCompaniesForCategory = (categoryId: string) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.companies : [];
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Reset company selection when category changes
+      if (name === 'category') {
+        newData.companyName = '';
+      }
+      
+      return newData;
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +88,41 @@ export default function UploadPage() {
       ...prev,
       file
     }));
+  };
+
+  // Function to sign the authentication message using Wallet
+  const signAuthMessage = async () => {
+    if (window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        });
+        if (accounts.length === 0) {
+          throw new Error("No accounts returned from Wallet.");
+        }
+        const signerAddress = accounts[0];
+        const { message } = (await lighthouse.getAuthMessage(signerAddress)).data;
+        const signature = await window.ethereum.request({
+          method: "personal_sign",
+          params: [message, signerAddress],
+        });
+        return { signature, signerAddress };
+      } catch (error) {
+        console.error("Error signing message with Wallet", error);
+        return null;
+      }
+    } else {
+      console.log("Please install Wallet!");
+      return null;
+    }
+  };
+
+  // Progress callback for upload
+  const progressCallback = (progressData: any) => {
+    if (progressData?.total && progressData?.uploaded) {
+      let percentageDone = 100 - Number((progressData.total / progressData.uploaded).toFixed(2));
+      console.log(percentageDone);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,78 +137,96 @@ export default function UploadPage() {
       return;
     }
 
-    if (!formData.file) {
+    if (!formData.file || !formData.category || !formData.companyName || !formData.dataName || !formData.dataDescription) {
       setUploadStatus({
         step: 'error',
-        message: 'Please select a file to upload',
-        error: 'No file selected'
+        message: 'Please fill in all required fields',
+        error: 'Missing required fields'
       });
       return;
     }
 
     try {
-      // Step 1: Upload to IPFS
+      // Step 1: Upload encrypted file to IPFS using Lighthouse
       setUploadStatus({
         step: 'uploading',
-        message: 'Uploading dataset to IPFS...'
+        message: 'Encrypting and uploading dataset to IPFS...'
       });
 
-      // Read file content
-      const fileContent = await formData.file.text();
-      let parsedData;
-
-      try {
-        parsedData = JSON.parse(fileContent);
-      } catch {
-        // If not JSON, treat as plain text
-        parsedData = { content: fileContent };
+      // Get authentication for encryption
+      const encryptionAuth = await signAuthMessage();
+      if (!encryptionAuth) {
+        throw new Error('Failed to sign the authentication message');
       }
 
-      const uploadResponse = await fetch('/api/upload', {
+      const { signature, signerAddress } = encryptionAuth;
+      const apiKey = process.env.NEXT_PUBLIC_LIGHTHOUSE_API_KEY;
+
+      if (!apiKey) {
+        throw new Error('Lighthouse API key not configured');
+      }
+
+      // Upload encrypted file
+      const output = await lighthouse.uploadEncrypted(
+        [formData.file],
+        apiKey,
+        signerAddress,
+        signature
+      );
+
+      console.log("Encrypted File Status:", output);
+      
+      if (!output.data || output.data.length === 0) {
+        throw new Error('Failed to upload encrypted file');
+      }
+
+      const ipfsHash = output.data[0].Hash;
+      const timestamp = new Date().toISOString();
+
+      // Step 2: Save to database via API
+      setUploadStatus({
+        step: 'uploaded',
+        message: 'File uploaded successfully. Saving to database...',
+        ipfsHash: ipfsHash
+      });
+
+      const saveResponse = await fetch('/api/upload', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          data: parsedData,
-          metadata: {
-            name: formData.name,
-            description: formData.description,
-            priceETH: formData.priceETH,
-            priceUSDC: formData.priceUSDC,
-            category: formData.category,
-          }
+          category: formData.category,
+          companyName: formData.companyName,
+          dataName: formData.dataName,
+          dataDescription: formData.dataDescription,
+          ipfsHash: ipfsHash,
+          timestamp: timestamp,
+          fileSize: formData.file.size,
+          uploaderAddress: signerAddress
         }),
       });
 
-      const uploadResult = await uploadResponse.json();
+      const saveResult = await saveResponse.json();
 
-      if (!uploadResponse.ok) {
-        throw new Error(uploadResult.error || 'Failed to upload to IPFS');
+      if (!saveResponse.ok) {
+        throw new Error(saveResult.error || 'Failed to save to database');
       }
 
-      // Step 2: Register on blockchain
       setUploadStatus({
-        step: 'uploaded',
-        message: 'File uploaded to IPFS successfully. Registering on blockchain...',
-        ipfsHash: uploadResult.hash
+        step: 'completed',
+        message: 'Dataset successfully uploaded and encrypted on IPFS!',
+        ipfsHash: ipfsHash
       });
 
-      const success = await registerDataset(uploadResult.hash, {
-        name: formData.name,
-        description: formData.description,
-        priceETH: formData.priceETH,
-        priceUSDC: formData.priceUSDC,
-        category: formData.category,
+      // Reset form
+      setFormData({
+        category: '',
+        companyName: '',
+        dataName: '',
+        dataDescription: '',
+        file: null,
       });
-
-      if (success) {
-        setUploadStatus({
-          step: 'registering',
-          message: 'Transaction submitted. Waiting for confirmation...',
-          ipfsHash: uploadResult.hash
-        });
-      }
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -159,24 +238,6 @@ export default function UploadPage() {
     }
   };
 
-  // Watch for transaction confirmation and errors
-  if (isConfirmed && uploadStatus.step === 'registering') {
-    setUploadStatus({
-      step: 'completed',
-      message: 'Dataset successfully uploaded and registered on blockchain!',
-      ipfsHash: uploadStatus.ipfsHash
-    });
-  }
-
-  // Handle registry errors
-  if (registryError && uploadStatus.step === 'registering') {
-    setUploadStatus({
-      step: 'error',
-      message: 'Blockchain registration failed',
-      error: registryError,
-      ipfsHash: uploadStatus.ipfsHash
-    });
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -189,40 +250,6 @@ export default function UploadPage() {
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Dataset Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
-                Dataset Name *
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-                className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter dataset name"
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-2">
-                Description *
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                required
-                rows={4}
-                className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Describe your dataset"
-              />
-            </div>
-
             {/* Category */}
             <div>
               <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-2">
@@ -238,45 +265,67 @@ export default function UploadPage() {
               >
                 <option value="">Select a category</option>
                 {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
             </div>
 
-            {/* Pricing */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="priceETH" className="block text-sm font-medium text-slate-700 mb-2">
-                  Price in ETH *
-                </label>
-                <input
-                  type="number"
-                  step="0.001"
-                  id="priceETH"
-                  name="priceETH"
-                  value={formData.priceETH}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="0.5"
-                />
-              </div>
-              <div>
-                <label htmlFor="priceUSDC" className="block text-sm font-medium text-slate-700 mb-2">
-                  Price in USDC *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  id="priceUSDC"
-                  name="priceUSDC"
-                  value={formData.priceUSDC}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="1250"
-                />
-              </div>
+            {/* Company Name */}
+            <div>
+              <label htmlFor="companyName" className="block text-sm font-medium text-slate-700 mb-2">
+                Company Name *
+              </label>
+              <select
+                id="companyName"
+                name="companyName"
+                value={formData.companyName}
+                onChange={handleInputChange}
+                required
+                disabled={!formData.category}
+                className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Select a company</option>
+                {getCompaniesForCategory(formData.category).map(company => (
+                  <option key={company} value={company}>{company}</option>
+                ))}
+              </select>
+              {!formData.category && (
+                <p className="text-xs text-slate-500 mt-1">Please select a category first</p>
+              )}
+            </div>
+
+            {/* Data Name */}
+            <div>
+              <label htmlFor="dataName" className="block text-sm font-medium text-slate-700 mb-2">
+                Data Name *
+              </label>
+              <input
+                type="text"
+                id="dataName"
+                name="dataName"
+                value={formData.dataName}
+                onChange={handleInputChange}
+                required
+                className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter dataset name"
+              />
+            </div>
+
+            {/* Data Description */}
+            <div>
+              <label htmlFor="dataDescription" className="block text-sm font-medium text-slate-700 mb-2">
+                Data Description *
+              </label>
+              <textarea
+                id="dataDescription"
+                name="dataDescription"
+                value={formData.dataDescription}
+                onChange={handleInputChange}
+                required
+                rows={4}
+                className="w-full border text-black border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Describe your dataset"
+              />
             </div>
 
             {/* File Upload */}
@@ -336,31 +385,6 @@ export default function UploadPage() {
                     </div>
                   </div>
 
-                  {/* Retry Button for Failed Blockchain Registration */}
-                  {uploadStatus.step === 'error' && uploadStatus.ipfsHash && (
-                    <button
-                      onClick={async () => {
-                        if (!uploadStatus.ipfsHash) return;
-
-                        setUploadStatus({
-                          step: 'registering',
-                          message: 'Retrying blockchain registration...',
-                          ipfsHash: uploadStatus.ipfsHash
-                        });
-
-                        await registerDataset(uploadStatus.ipfsHash, {
-                          name: formData.name,
-                          description: formData.description,
-                          priceETH: formData.priceETH,
-                          priceUSDC: formData.priceUSDC,
-                          category: formData.category,
-                        });
-                      }}
-                      className="ml-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Retry Registration
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -368,13 +392,13 @@ export default function UploadPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={!isConnected || uploadStatus.step === 'uploading' || uploadStatus.step === 'registering' || isRegistering}
+              disabled={!isConnected || uploadStatus.step === 'uploading' || uploadStatus.step === 'uploaded'}
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
             >
               {!isConnected ? 'Connect Wallet First' :
-               uploadStatus.step === 'uploading' ? 'Uploading to IPFS...' :
-               uploadStatus.step === 'registering' || isRegistering ? 'Registering on Blockchain...' :
-               'Upload Dataset'}
+               uploadStatus.step === 'uploading' ? 'Encrypting & Uploading...' :
+               uploadStatus.step === 'uploaded' ? 'Saving to Database...' :
+               'Upload Encrypted Dataset'}
             </button>
           </form>
         </div>

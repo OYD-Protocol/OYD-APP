@@ -4,76 +4,62 @@ import lighthouse from '@lighthouse-web3/sdk';
 const LIGHTHOUSE_API_KEY = process.env.LH_API_KEY;
 
 export interface UploadRequest {
-  data: unknown;
-  metadata: {
-    name: string;
-    description: string;
-    priceETH: string;
-    priceUSDC: string;
-    category: string;
-  };
+  category: string;
+  companyName: string;
+  dataName: string;
+  dataDescription: string;
+  ipfsHash: string;
+  timestamp: string;
+  fileSize: number;
+  uploaderAddress: string;
 }
 
 export async function POST(request: Request) {
   try {
-    // Validate API key
-    if (!LIGHTHOUSE_API_KEY) {
-      return NextResponse.json(
-        { error: 'Lighthouse API key not configured' },
-        { status: 500 }
-      );
-    }
-
     // Get and validate request data
     const body: UploadRequest = await request.json();
-    if (!body.data) {
+    
+    // Validate required fields
+    const { category, companyName, dataName, dataDescription, ipfsHash, timestamp, fileSize, uploaderAddress } = body;
+    if (!category || !companyName || !dataName || !dataDescription || !ipfsHash || !timestamp || !fileSize || !uploaderAddress) {
       return NextResponse.json(
-        { error: 'No data provided' },
+        { error: 'Missing required fields: category, companyName, dataName, dataDescription, ipfsHash, timestamp, fileSize, uploaderAddress' },
         { status: 400 }
       );
     }
 
-    if (!body.metadata) {
-      return NextResponse.json(
-        { error: 'Dataset metadata is required' },
-        { status: 400 }
-      );
-    }
+    // Here you would typically save to your database
+    // For now, we'll simulate a database save
+    const datasetRecord = {
+      id: `${companyName}-${Date.now()}`,
+      category,
+      companyName,
+      dataName,
+      dataDescription,
+      ipfsHash,
+      timestamp,
+      fileSize,
+      uploaderAddress,
+      oydCost: Math.ceil(fileSize / (1024 * 1024)), // 1MB = 1 OYD datacoin
+      downloads: 0,
+      createdAt: new Date().toISOString()
+    };
 
-    // Validate required metadata fields
-    const { name, description, priceETH, priceUSDC, category } = body.metadata;
-    if (!name || !description || !priceETH || !priceUSDC || !category) {
-      return NextResponse.json(
-        { error: 'Missing required metadata fields: name, description, priceETH, priceUSDC, category' },
-        { status: 400 }
-      );
-    }
+    // TODO: Save to actual database
+    console.log('Dataset record to save:', datasetRecord);
 
-    // Prepare file for upload
-    const file = new File(
-      [JSON.stringify(body.data)],
-      'dataset.json',
-      { type: 'application/json' }
-    );
-
-    // Upload to IPFS via Lighthouse
-    const response = await lighthouse.upload(file, LIGHTHOUSE_API_KEY);
-    const ipfsHash = response.data.Hash;
-
-    // Return success response with IPFS hash and metadata
-    // The frontend will handle the blockchain transaction
+    // Return success response
     return NextResponse.json({
       success: true,
-      url: `https://gateway.lighthouse.storage/ipfs/${ipfsHash}`,
-      hash: ipfsHash,
-      metadata: body.metadata,
-      message: 'File uploaded to IPFS successfully. Please confirm blockchain transaction to complete registration.'
+      message: 'Dataset successfully saved to database',
+      dataset: datasetRecord,
+      decryptUrl: `https://decrypt.mesh3.network/evm/${ipfsHash}`
     });
 
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('Save error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: 'Failed to save dataset record' },
       { status: 500 }
     );
   }

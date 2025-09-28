@@ -9,86 +9,174 @@ interface Dataset {
   id: string;
   name: string;
   description: string;
-  priceETH: string;
-  priceUSDC: string;
   category: string;
   size: string;
-  lastUpdated: string;
+  timestamp: string;
   ipfsHash: string;
   seller: string;
   downloads: number;
-  rating: number;
+  oydCost: number; // Cost in OYD datacoins (1MB = 1 OYD)
 }
 
-const mockDatasets: Dataset[] = [
+// Categories for the marketplace
+const categories = [
   {
-    id: '1',
-    name: 'Global Climate Data 2024',
-    description: 'Comprehensive climate measurements from weather stations worldwide, including temperature, humidity, and precipitation data.',
-    priceETH: '0.5',
-    priceUSDC: '1250',
-    category: 'Environmental',
-    size: '2.3 GB',
-    lastUpdated: '2024-01-15',
-    ipfsHash: 'QmYx8K3BnNjpGhJ2fR4vL9mX5sT7uE1wP6qA3nB8dC9fG2h',
-    seller: '0x1234...5678',
-    downloads: 142,
-    rating: 4.8
+    id: 'supermart',
+    name: 'Supermart',
+    description: 'Consumer behavior data from major supermarket chains',
+    companies: ['Flipkart', 'Amazon']
   },
   {
-    id: '2',
-    name: 'E-commerce User Behavior',
-    description: 'Anonymized user interaction data from major e-commerce platforms, perfect for ML training and behavior analysis.',
-    priceETH: '1.2',
-    priceUSDC: '3000',
-    category: 'Business',
-    size: '5.7 GB',
-    lastUpdated: '2024-01-10',
-    ipfsHash: 'QmZx9K4BnNjpGhJ3fR5vL0mX6sT8uE2wP7qA4nB9dC0fG3h',
-    seller: '0x2345...6789',
-    downloads: 89,
-    rating: 4.6
+    id: 'groceries',
+    name: 'Groceries and Food',
+    description: 'Food delivery and grocery shopping patterns',
+    companies: ['Zepto', 'Blinkit', 'Swiggy', 'Zomato']
   },
   {
-    id: '3',
-    name: 'Medical Research Dataset',
-    description: 'De-identified patient data for cardiovascular research, including diagnostic imaging and treatment outcomes.',
-    priceETH: '2.0',
-    priceUSDC: '5000',
-    category: 'Healthcare',
-    size: '12.1 GB',
-    lastUpdated: '2024-01-08',
-    ipfsHash: 'QmAx7K5BnNjpGhJ4fR6vL1mX7sT9uE3wP8qA5nB0dC1fG4h',
-    seller: '0x3456...7890',
-    downloads: 45,
-    rating: 4.9
+    id: 'pharmacy',
+    name: 'Pharmacy',
+    description: 'Healthcare and medicine purchase behavior',
+    companies: ['1mg']
   },
   {
-    id: '4',
-    name: 'Financial Market Indicators',
-    description: 'Real-time financial data including stock prices, trading volumes, and market sentiment indicators.',
-    priceETH: '0.8',
-    priceUSDC: '2000',
-    category: 'Finance',
-    size: '800 MB',
-    lastUpdated: '2024-01-20',
-    ipfsHash: 'QmBx6K6BnNjpGhJ5fR7vL2mX8sT0uE4wP9qA6nB1dC2fG5h',
-    seller: '0x4567...8901',
-    downloads: 203,
-    rating: 4.7
+    id: 'apparels',
+    name: 'Apparels',
+    description: 'Fashion and clothing shopping trends',
+    companies: ['Myntra', 'Ajio']
   }
 ];
 
+// Company datasets organized by category
+const companyDatasets: { [key: string]: Dataset[] } = {
+  supermart: [
+    {
+      id: 'flipkart-1',
+      name: 'Flipkart',
+      description: 'Consumer purchase patterns, product preferences, and seasonal shopping trends from Flipkart marketplace.',
+      category: 'Supermart',
+      size: '2.5 GB',
+      timestamp: '2024-01-20T10:30:00Z',
+      ipfsHash: 'QmFlipkart1BnNjpGhJ2fR4vL9mX5sT7uE1wP6qA3nB8dC9fG2h',
+      seller: '0xFlip...kart',
+      downloads: 156,
+      oydCost: 2560 // 2.5 GB = ~2560 MB = 2560 OYD
+    },
+    {
+      id: 'amazon-1',
+      name: 'Amazon',
+      description: 'Comprehensive shopping behavior data including cart abandonment, product reviews, and purchase history.',
+      category: 'Supermart',
+      size: '4.2 GB',
+      timestamp: '2024-01-18T14:45:00Z',
+      ipfsHash: 'QmAmazon1BnNjpGhJ3fR5vL0mX6sT8uE2wP7qA4nB9dC0fG3h',
+      seller: '0xAmaz...ozon',
+      downloads: 203,
+      oydCost: 4300 // 4.2 GB = ~4300 MB = 4300 OYD
+    }
+  ],
+  groceries: [
+    {
+      id: 'zepto-1',
+      name: 'Zepto',
+      description: 'Quick commerce data with delivery preferences, time-based ordering patterns, and product demand.',
+      category: 'Groceries and Food',
+      size: '1.8 GB',
+      timestamp: '2024-01-22T09:15:00Z',
+      ipfsHash: 'QmZepto1BnNjpGhJ4fR6vL1mX7sT9uE3wP8qA5nB0dC1fG4h',
+      seller: '0xZept...opto',
+      downloads: 89,
+      oydCost: 1840 // 1.8 GB = ~1840 MB = 1840 OYD
+    },
+    {
+      id: 'blinkit-1',
+      name: 'Blinkit',
+      description: 'Instant grocery delivery patterns, peak hour analysis, and customer retention data.',
+      category: 'Groceries and Food',
+      size: '1.5 GB',
+      timestamp: '2024-01-21T16:20:00Z',
+      ipfsHash: 'QmBlinkit1BnNjpGhJ5fR7vL2mX8sT0uE4wP9qA6nB1dC2fG5h',
+      seller: '0xBlin...nkit',
+      downloads: 67,
+      oydCost: 1536 // 1.5 GB = ~1536 MB = 1536 OYD
+    },
+    {
+      id: 'swiggy-1',
+      name: 'Swiggy',
+      description: 'Food delivery preferences, restaurant ratings impact, and order timing patterns.',
+      category: 'Groceries and Food',
+      size: '3.1 GB',
+      timestamp: '2024-01-19T12:30:00Z',
+      ipfsHash: 'QmSwiggy1BnNjpGhJ6fR8vL3mX9sT1uE5wP0qA7nB2dC3fG6h',
+      seller: '0xSwig...iggy',
+      downloads: 134,
+      oydCost: 3174 // 3.1 GB = ~3174 MB = 3174 OYD
+    },
+    {
+      id: 'zomato-1',
+      name: 'Zomato',
+      description: 'Restaurant discovery patterns, user reviews analysis, and dining preferences data.',
+      category: 'Groceries and Food',
+      size: '2.7 GB',
+      timestamp: '2024-01-17T11:45:00Z',
+      ipfsHash: 'QmZomato1BnNjpGhJ7fR9vL4mX0sT2uE6wP1qA8nB3dC4fG7h',
+      seller: '0xZoma...mato',
+      downloads: 98,
+      oydCost: 2765 // 2.7 GB = ~2765 MB = 2765 OYD
+    }
+  ],
+  pharmacy: [
+    {
+      id: '1mg-1',
+      name: '1mg',
+      description: 'Healthcare product purchase behavior, prescription patterns, and wellness product preferences.',
+      category: 'Pharmacy',
+      size: '900 MB',
+      timestamp: '2024-01-23T08:00:00Z',
+      ipfsHash: 'Qm1mg1BnNjpGhJ8fR0vL5mX1sT3uE7wP2qA9nB4dC5fG8h',
+      seller: '0x1mg1...mg11',
+      downloads: 45,
+      oydCost: 900 // 900 MB = 900 OYD
+    }
+  ],
+  apparels: [
+    {
+      id: 'myntra-1',
+      name: 'Myntra',
+      description: 'Fashion trends, seasonal clothing preferences, brand loyalty, and size-based purchase patterns.',
+      category: 'Apparels',
+      size: '2.1 GB',
+      timestamp: '2024-01-16T15:30:00Z',
+      ipfsHash: 'QmMyntra1BnNjpGhJ9fR1vL6mX2sT4uE8wP3qA0nB5dC6fG9h',
+      seller: '0xMynt...ntra',
+      downloads: 112,
+      oydCost: 2150 // 2.1 GB = ~2150 MB = 2150 OYD
+    },
+    {
+      id: 'ajio-1',
+      name: 'Ajio',
+      description: 'Youth fashion preferences, discount sensitivity analysis, and social media influenced purchases.',
+      category: 'Apparels',
+      size: '1.6 GB',
+      timestamp: '2024-01-15T13:15:00Z',
+      ipfsHash: 'QmAjio1BnNjpGhJ0fR2vL7mX3sT5uE9wP4qA1nB6dC7fG0h',
+      seller: '0xAjio...jio1',
+      downloads: 78,
+      oydCost: 1638 // 1.6 GB = ~1638 MB = 1638 OYD
+    }
+  ]
+};
+
 export default function Dashboard() {
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
-  const [currency, setCurrency] = useState<'ETH' | 'USDC'>('ETH');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const { buyDataset, isLoading, error, hasPurchased } = useBuyDataset();
   const { generateAccess } = useDataAccess();
 
   const handleBuyDataset = async (dataset: Dataset) => {
-    const price = currency === 'ETH' ? dataset.priceETH : dataset.priceUSDC;
-    const success = await buyDataset(dataset.id, price, currency);
+    // For now, we'll use ETH as the currency type since the hook expects it
+    // In a real implementation, you'd update the hook to support OYD
+    const success = await buyDataset(dataset.id, dataset.oydCost.toString(), 'ETH');
 
     if (success) {
       await generateAccess(dataset.id, dataset.ipfsHash);
@@ -100,40 +188,32 @@ export default function Dashboard() {
 
   const getCategoryColor = (category: string) => {
     const colors = {
-      Environmental: 'from-emerald-500 to-green-500',
-      Business: 'from-blue-500 to-indigo-500',
-      Healthcare: 'from-rose-500 to-pink-500',
-      Finance: 'from-amber-500 to-orange-500'
+      Supermart: 'from-blue-500 to-indigo-500',
+      'Groceries and Food': 'from-emerald-500 to-green-500',
+      Pharmacy: 'from-rose-500 to-pink-500',
+      Apparels: 'from-purple-500 to-violet-500'
     };
     return colors[category as keyof typeof colors] || 'from-slate-500 to-slate-600';
   };
 
   const getCategoryBadgeColor = (category: string) => {
     const colors = {
-      Environmental: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      Business: 'bg-blue-100 text-blue-700 border-blue-200',
-      Healthcare: 'bg-rose-100 text-rose-700 border-rose-200',
-      Finance: 'bg-amber-100 text-amber-700 border-amber-200'
+      Supermart: 'bg-blue-100 text-blue-700 border-blue-200',
+      'Groceries and Food': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      Pharmacy: 'bg-rose-100 text-rose-700 border-rose-200',
+      Apparels: 'bg-purple-100 text-purple-700 border-purple-200'
     };
     return colors[category as keyof typeof colors] || 'bg-slate-100 text-slate-700 border-slate-200';
   };
 
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center">
-        {[...Array(5)].map((_, i) => (
-          <svg
-            key={i}
-            className={`w-4 h-4 ${i < Math.floor(rating) ? 'text-amber-400' : 'text-slate-300'}`}
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-        ))}
-        <span className="ml-1 text-xs text-slate-500 font-medium">({rating})</span>
-      </div>
-    );
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -144,132 +224,235 @@ export default function Dashboard() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">Dataset Marketplace</h1>
-              <p className="text-slate-600">Discover and purchase premium datasets from verified sources</p>
+              <h1 className="text-3xl font-bold text-slate-900 mb-2">Ecommerce Consumer Behaviour</h1>
+              <p className="text-slate-600">
+                {selectedCategory 
+                  ? `Browse ${selectedCategory} datasets from leading companies`
+                  : 'Discover consumer behavior datasets from top ecommerce platforms'
+                }
+              </p>
             </div>
             <div className="hidden md:flex items-center space-x-4">
+              {selectedCategory && (
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  ← Back to Categories
+                </button>
+              )}
               <div className="bg-white rounded-lg px-4 py-2 border border-slate-200 shadow-sm">
-                <div className="text-sm text-slate-500">Total Datasets</div>
-                <div className="text-2xl font-bold text-slate-900">4</div>
+                <div className="text-sm text-slate-500">
+                  {selectedCategory ? 'Companies' : 'Categories'}
+                </div>
+                <div className="text-2xl font-bold text-slate-900">
+                  {selectedCategory 
+                    ? Array.from(new Set(companyDatasets[selectedCategory]?.map(dataset => dataset.name) || [])).length
+                    : categories.length
+                  }
+                </div>
               </div>
+              {selectedCategory && (
+                <div className="bg-white rounded-lg px-4 py-2 border border-slate-200 shadow-sm">
+                  <div className="text-sm text-slate-500">Total Datasets</div>
+                  <div className="text-2xl font-bold text-slate-900">
+                    {companyDatasets[selectedCategory]?.length || 0}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="mb-8 flex flex-wrap gap-4">
-          <select className="bg-white border border-slate-300 text-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm min-w-[150px]">
-            <option>All Categories</option>
-            <option>Environmental</option>
-            <option>Business</option>
-            <option>Healthcare</option>
-            <option>Finance</option>
-          </select>
-
-          <select className="bg-white border border-slate-300 text-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm min-w-[160px]">
-            <option>Price: Low to High</option>
-            <option>Price: High to Low</option>
-            <option>Most Popular</option>
-            <option>Newest</option>
-          </select>
-
-          <div className="flex bg-white border border-slate-300 rounded-lg p-1 shadow-sm">
-            <button
-              onClick={() => setCurrency('ETH')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                currency === 'ETH'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              ETH
-            </button>
-            <button
-              onClick={() => setCurrency('USDC')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                currency === 'USDC'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              USDC
-            </button>
+        {/* Category or Company Grid */}
+        {!selectedCategory ? (
+          // Show Categories
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {categories.map((category) => (
+              <div
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className="bg-white rounded-2xl border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer group"
+              >
+                <div className={`h-24 bg-gradient-to-r ${getCategoryColor(category.name)} relative`}>
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors"></div>
+                  <div className="absolute bottom-3 left-4 text-white">
+                    <h3 className="text-lg font-bold">{category.name}</h3>
           </div>
+                  <div className="absolute top-3 right-4 text-white text-sm bg-black/20 px-2 py-1 rounded">
+                    {category.companies.length} companies
         </div>
-
-        {/* Dataset Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockDatasets.map((dataset) => (
-            <div
-              key={dataset.id}
-              className="bg-white rounded-2xl border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-300 overflow-hidden group"
-            >
-              {/* Header with gradient and category */}
-              <div className={`h-24 bg-gradient-to-r ${getCategoryColor(dataset.category)} relative`}>
-                <div className="absolute top-4 left-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getCategoryBadgeColor(dataset.category)}`}>
-                    {dataset.category}
-                  </span>
                 </div>
-                <div className="absolute bottom-3 right-4 text-white text-sm font-medium bg-black/20 px-2 py-1 rounded">
-                  {dataset.size}
+                <div className="p-6">
+                  <p className="text-slate-600 text-sm mb-4 leading-relaxed">
+                    {category.description}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {category.companies.map((company, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-slate-100 text-slate-700 text-xs rounded-md"
+                      >
+                        {company}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
-
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight">
-                    {dataset.name}
-                  </h3>
-                  {renderStars(dataset.rating)}
+            ))}
+          </div>
+        ) : (
+          // Show Companies in Selected Category with Individual Tables
+          <div className="space-y-8">
+            {/* Get unique companies in the selected category */}
+            {Array.from(new Set(companyDatasets[selectedCategory]?.map(dataset => dataset.name) || [])).map((companyName) => {
+              const companyData = companyDatasets[selectedCategory]?.filter(dataset => dataset.name === companyName) || [];
+              
+              return (
+                <div key={companyName} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  {/* Company Header */}
+                  <div className={`bg-gradient-to-r ${getCategoryColor(companyData[0]?.category || '')} px-6 py-4`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold text-white">{companyName}</h3>
+                        <p className="text-white/80 text-sm">{companyData.length} dataset{companyData.length !== 1 ? 's' : ''} available</p>
                 </div>
-
-                <p className="text-slate-600 text-sm mb-4 leading-relaxed line-clamp-3">
-                  {dataset.description}
-                </p>
-
-                <div className="flex justify-between items-center mb-6">
-                  <div className="text-xs text-slate-500 space-y-1">
-                    <div className="flex items-center">
-                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {dataset.downloads} downloads
+                      <div className="text-white/80 text-sm">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium border border-white/30 bg-white/10`}>
+                          {companyData[0]?.category}
+                        </span>
                     </div>
-                    <div className="flex items-center">
-                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                      </svg>
-                      {dataset.lastUpdated}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-slate-900">
-                      {currency === 'ETH' ? `${dataset.priceETH} ETH` : `$${dataset.priceUSDC}`}
-                    </div>
-                    <div className="text-xs text-slate-500 font-mono">{dataset.seller}</div>
-                  </div>
-                </div>
 
+                  {/* Company Data Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Data Name</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Description</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Timestamp</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Size</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">IPFS Hash</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Downloads</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Cost (OYD)</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Seller</th>
+                          <th className="text-left py-3 px-6 font-semibold text-slate-700 text-sm">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {companyData.map((dataset, index) => (
+                          <tr key={dataset.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-4 px-6">
+                              <div className="font-semibold text-slate-900 text-sm">{dataset.name}</div>
+                            </td>
+                            <td className="py-4 px-6 max-w-xs">
+                              <div className="text-sm text-slate-600 line-clamp-2" title={dataset.description}>
+                                {dataset.description}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-sm text-slate-700 whitespace-nowrap">
+                              {formatTimestamp(dataset.timestamp)}
+                            </td>
+                            <td className="py-4 px-6 text-sm font-semibold text-slate-700">
+                              {dataset.size}
+                            </td>
+                            <td className="py-4 px-6 text-xs font-mono text-slate-700">
+                              <div className="flex items-center space-x-2">
+                                <span>{dataset.ipfsHash.slice(0, 12)}...</span>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(dataset.ipfsHash)}
+                                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                                  title="Copy full hash"
+                                >
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path>
+                                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path>
+                                  </svg>
+                                </button>
+                    </div>
+                            </td>
+                            <td className="py-4 px-6 text-sm text-slate-700">
+                              <div className="flex items-center space-x-1">
+                                <svg className="w-3 h-3 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
+                                </svg>
+                                <span>{dataset.downloads}</span>
+                  </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center space-x-1">
+                                <span className="text-lg font-bold text-blue-600">{dataset.oydCost}</span>
+                                <span className="text-xs text-slate-500">OYD</span>
+                </div>
+                            </td>
+                            <td className="py-4 px-6 text-xs font-mono text-slate-600">
+                              {dataset.seller}
+                            </td>
+                            <td className="py-4 px-6">
                 {hasPurchased(dataset.id) ? (
-                  <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 py-3 px-4 rounded-xl font-semibold text-center text-sm">
-                    <svg className="w-4 h-4 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    Purchased
+                                  Owned
                   </div>
                 ) : (
                   <button
                     onClick={() => setSelectedDataset(dataset)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-semibold transition-all duration-200 transform hover:scale-[1.02] shadow-sm hover:shadow-md"
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   >
-                    Purchase Dataset
+                                  Buy
                   </button>
                 )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Company Summary Footer */}
+                  <div className="bg-slate-50 px-6 py-3 border-t border-slate-200">
+                    <div className="flex items-center justify-between text-sm text-slate-600">
+                      <div>
+                        Total Datasets: <span className="font-semibold text-slate-900">{companyData.length}</span>
+                      </div>
+                      <div>
+                        Total Downloads: <span className="font-semibold text-slate-900">
+                          {companyData.reduce((sum, dataset) => sum + dataset.downloads, 0)}
+                        </span>
+                      </div>
+                      <div>
+                        Total Size: <span className="font-semibold text-slate-900">
+                          {(() => {
+                            const totalMB = companyData.reduce((sum, dataset) => {
+                              const sizeInMB = parseFloat(dataset.size.replace(/[^\d.]/g, '')) * 
+                                (dataset.size.includes('GB') ? 1024 : 1);
+                              return sum + sizeInMB;
+                            }, 0);
+                            return totalMB > 1024 ? `${(totalMB / 1024).toFixed(1)} GB` : `${totalMB.toFixed(0)} MB`;
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* No data message */}
+            {(!companyDatasets[selectedCategory] || companyDatasets[selectedCategory].length === 0) && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+                <div className="text-center py-16">
+                  <div className="text-slate-500 text-xl mb-2">No datasets available</div>
+                  <div className="text-slate-400 text-sm">Companies in this category haven't uploaded any datasets yet</div>
+                </div>
               </div>
+            )}
             </div>
-          ))}
-        </div>
+        )}
 
         {/* Purchase Modal */}
         {selectedDataset && (
@@ -294,16 +477,21 @@ export default function Dashboard() {
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-slate-600 font-medium">Price:</span>
-                    <span className="text-slate-900 font-bold text-lg">
-                      {currency === 'ETH'
-                        ? `${selectedDataset.priceETH} ETH`
-                        : `$${selectedDataset.priceUSDC} USDC`
-                      }
+                    <span className="text-blue-600 font-bold text-lg">
+                      {selectedDataset.oydCost} OYD datacoins
                     </span>
                   </div>
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-slate-600 font-medium">Size:</span>
                     <span className="text-slate-900 font-semibold">{selectedDataset.size}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-slate-600 font-medium">Timestamp:</span>
+                    <span className="text-slate-900 text-sm">{formatTimestamp(selectedDataset.timestamp)}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-slate-600 font-medium">IPFS Hash:</span>
+                    <span className="text-slate-900 font-mono text-sm">{selectedDataset.ipfsHash.slice(0, 20)}...</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600 font-medium">Seller:</span>
