@@ -203,17 +203,15 @@ export default function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [uploadedDatasets, setUploadedDatasets] = useState<UploadedDataset[]>([]);
-  const [previewModal, setPreviewModal] = useState<{
+  const [purchaseModal, setPurchaseModal] = useState<{
     show: boolean;
     dataset: Dataset | null;
-    fileUrl: string | null;
-    isDecrypting: boolean;
+    isProcessing: boolean;
     error: string | null;
   }>({
     show: false,
     dataset: null,
-    fileUrl: null,
-    isDecrypting: false,
+    isProcessing: false,
     error: null
   });
   const { buyDataset, isLoading, error, hasPurchased } = useBuyDataset();
@@ -241,9 +239,14 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Combine mock data with uploaded datasets
+  // Get datasets - prioritize real data over mock data
   const getAllDatasets = () => {
-    const allDatasets = { ...companyDatasets };
+    const allDatasets: { [key: string]: Dataset[] } = {};
+    
+    // Initialize empty arrays for all categories
+    categories.forEach(category => {
+      allDatasets[category.id] = [];
+    });
     
     // Add uploaded datasets to their respective categories
     uploadedDatasets.forEach(dataset => {
@@ -270,6 +273,27 @@ export default function Dashboard() {
       
       allDatasets[categoryKey].push(formattedDataset);
     });
+    
+    // Remove duplicates based on ID
+    Object.keys(allDatasets).forEach(categoryKey => {
+      const seen = new Set();
+      allDatasets[categoryKey] = allDatasets[categoryKey].filter(dataset => {
+        if (seen.has(dataset.id)) {
+          return false;
+        }
+        seen.add(dataset.id);
+        return true;
+      });
+    });
+    
+    // If no real data exists, show mock data for demo purposes
+    if (uploadedDatasets.length === 0) {
+      Object.keys(companyDatasets).forEach(categoryKey => {
+        if (companyDatasets[categoryKey]) {
+          allDatasets[categoryKey] = [...companyDatasets[categoryKey]];
+        }
+      });
+    }
     
     return allDatasets;
   };
@@ -301,17 +325,22 @@ export default function Dashboard() {
     };
   };
 
-  // Decrypt and preview file
-  const decryptAndPreview = async (dataset: Dataset) => {
-    setPreviewModal({
+  // Show purchase confirmation modal
+  const showPurchaseModal = (dataset: Dataset) => {
+    setPurchaseModal({
       show: true,
       dataset,
-      fileUrl: null,
-      isDecrypting: true,
+      isProcessing: false,
       error: null
     });
+  };
+
+  // Handle direct decrypt/download (skip payment for now)
+  const handlePurchaseAndDownload = async (dataset: Dataset) => {
+    setPurchaseModal(prev => ({ ...prev, isProcessing: true, error: null }));
 
     try {
+      // Skip payment step - directly decrypt and download
       const cid = dataset.cid;
       const { publicKey, signedMessage } = await encryptionSignature();
       
@@ -322,25 +351,53 @@ export default function Dashboard() {
         signedMessage
       );
 
-      // Decrypt file (assuming JSON for now, can be made dynamic)
-      const fileType = "application/json";
-      const decrypted = await lighthouse.decryptFile(cid, keyObject.data.key || '', fileType);
+      // Decrypt file - try different file types
+      let decrypted;
+      let fileName = `${dataset.name.replace(/[^a-zA-Z0-9]/g, '_')}-${dataset.id}`;
       
-      // Create URL for preview
+      // Try to decrypt without specifying MIME type first (most reliable)
+      try {
+        decrypted = await lighthouse.decryptFile(cid, keyObject.data.key || '');
+        
+        // Try to determine file type from content
+        const text = await decrypted.text();
+        try {
+          JSON.parse(text);
+          fileName += '.json';
+        } catch {
+          fileName += '.txt';
+        }
+        
+        // Recreate blob with detected type
+        decrypted = new Blob([text], { type: fileName.endsWith('.json') ? 'application/json' : 'text/plain' });
+        
+      } catch (error) {
+        console.error('Decryption failed:', error);
+        throw new Error('Failed to decrypt file. Please check your access permissions.');
+      }
+      
+      // Create download link and trigger download
       const url = URL.createObjectURL(decrypted);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
-      setPreviewModal(prev => ({
-        ...prev,
-        fileUrl: url,
-        isDecrypting: false
-      }));
+      // Clean up URL
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+      // Close modal and show success
+      setPurchaseModal({ show: false, dataset: null, isProcessing: false, error: null });
+      setShowSuccess(true);
       
     } catch (error) {
-      console.error('Decryption error:', error);
-      setPreviewModal(prev => ({
+      console.error('Download error:', error);
+      setPurchaseModal(prev => ({
         ...prev,
-        isDecrypting: false,
-        error: error instanceof Error ? error.message : 'Failed to decrypt file'
+        isProcessing: false,
+        error: error instanceof Error ? error.message : 'Failed to download file'
       }));
     }
   };
@@ -403,6 +460,18 @@ export default function Dashboard() {
                   : 'Discover consumer behavior datasets from top ecommerce platforms'
                 }
               </p>
+              {uploadedDatasets.length > 0 && (
+                <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                  Showing {uploadedDatasets.length} real dataset{uploadedDatasets.length !== 1 ? 's' : ''}
+                </div>
+              )}
+              {uploadedDatasets.length === 0 && (
+                <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full mr-2"></div>
+                  Showing demo data (upload a dataset to see real data)
+                </div>
+              )}
             </div>
             <button
               onClick={fetchUploadedDatasets}
@@ -586,14 +655,14 @@ export default function Dashboard() {
                     </svg>
                                   Owned
                   </div>
-                ) : (
-                  <button
-                              onClick={() => decryptAndPreview(dataset)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  >
-                              Preview & Buy
-                  </button>
-                )}
+                          ) : (
+                            <button
+                              onClick={() => showPurchaseModal(dataset)}
+                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                            >
+                              Download
+                            </button>
+                          )}
                             </td>
                           </tr>
                         ))}
@@ -744,112 +813,104 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* File Preview Modal */}
-        {previewModal.show && (
+        {/* Purchase Confirmation Modal */}
+        {purchaseModal.show && purchaseModal.dataset && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
-              <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">Dataset Preview</h3>
-                  {previewModal.dataset && (
-                    <p className="text-slate-600 text-sm">{previewModal.dataset.name} - {previewModal.dataset.description}</p>
-                  )}
+            <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+              <div className="p-6 border-b border-slate-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-slate-900">Download Dataset</h3>
+                  <button
+                    onClick={() => setPurchaseModal({ show: false, dataset: null, isProcessing: false, error: null })}
+                    className="text-slate-400 hover:text-slate-600 transition-colors"
+                    disabled={purchaseModal.isProcessing}
+                  >
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
-                <button
-                  onClick={() => setPreviewModal({ show: false, dataset: null, fileUrl: null, isDecrypting: false, error: null })}
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
               </div>
 
-              <div className="p-6 max-h-[60vh] overflow-y-auto">
-                {previewModal.isDecrypting && (
-                  <div className="text-center py-12">
+              <div className="p-6">
+                {purchaseModal.isProcessing ? (
+                  <div className="text-center py-8">
                     <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                    <p className="text-slate-600">Decrypting file...</p>
+                    <p className="text-slate-600 mb-2">Decrypting and downloading...</p>
+                    <p className="text-sm text-slate-500">Please sign the message in your wallet to decrypt the file</p>
                   </div>
-                )}
-
-                {previewModal.error && (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <p className="text-red-600 font-medium mb-2">Decryption Failed</p>
-                    <p className="text-slate-600 text-sm">{previewModal.error}</p>
-                  </div>
-                )}
-
-                {previewModal.fileUrl && !previewModal.isDecrypting && !previewModal.error && (
-                  <div>
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
-                      <h4 className="font-semibold text-slate-900 mb-2">File Preview</h4>
-                      <p className="text-sm text-slate-600 mb-4">This is a sample of the decrypted dataset. Purchase to download the complete file.</p>
+                ) : (
+                  <>
+                    <div className="mb-6">
+                      <h4 className="font-semibold text-slate-900 mb-2">{purchaseModal.dataset.name}</h4>
+                      <p className="text-sm text-slate-600 mb-4">{purchaseModal.dataset.description}</p>
                       
-                      {/* File content preview - assuming JSON for now */}
-                      <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto">
-                        <pre>
-                          {/* This would show actual file content */}
-                          {`{
-  "sample_data": "This is a preview of the dataset",
-  "total_records": 10000,
-  "format": "JSON",
-  "description": "Consumer behavior data",
-  "preview_note": "This is just a sample. Full dataset available after purchase."
-}`}
-                        </pre>
+                      <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Size:</span>
+                          <span className="font-medium">{purchaseModal.dataset.size}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Category:</span>
+                          <span className="font-medium">{purchaseModal.dataset.category}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Downloads:</span>
+                          <span className="font-medium">{purchaseModal.dataset.downloads}</span>
+                        </div>
                       </div>
                     </div>
 
-                    {previewModal.dataset && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-medium text-blue-900">Dataset Cost</div>
-                            <div className="text-2xl font-bold text-blue-600">
-                              {previewModal.dataset.oydCost.toLocaleString()} OYD
-                            </div>
-                            <div className="text-xs text-blue-700">datacoins</div>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-green-900">Dataset Value</div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {purchaseModal.dataset.oydCost.toLocaleString()} OYD
                           </div>
-                          <div className="text-right text-sm text-blue-800">
-                            <div>Size: {previewModal.dataset.size}</div>
-                            <div>Company: {previewModal.dataset.name}</div>
+                          <div className="text-xs text-green-700">datacoins (demo mode)</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
                           </div>
                         </div>
                       </div>
+                    </div>
+
+                    {purchaseModal.error && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <div className="flex items-center">
+                          <svg className="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <p className="text-red-800 text-sm">{purchaseModal.error}</p>
+                        </div>
+                      </div>
                     )}
-                  </div>
+
+                    <div className="text-xs text-slate-500 mb-6">
+                      The dataset will be decrypted and downloaded to your device. No payment required in demo mode.
+                    </div>
+                  </>
                 )}
               </div>
 
-              {previewModal.fileUrl && !previewModal.isDecrypting && !previewModal.error && previewModal.dataset && (
+              {!purchaseModal.isProcessing && (
                 <div className="flex gap-3 p-6 border-t border-slate-200">
                   <button
-                    onClick={() => setPreviewModal({ show: false, dataset: null, fileUrl: null, isDecrypting: false, error: null })}
+                    onClick={() => setPurchaseModal({ show: false, dataset: null, isProcessing: false, error: null })}
                     className="flex-1 bg-slate-100 text-slate-700 py-3 px-4 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
                   >
                     Cancel
                   </button>
-                  <a
-                    href={previewModal.fileUrl}
-                    download={`${previewModal.dataset.name}-sample.json`}
-                    className="flex-1 bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 transition-colors text-center"
-                  >
-                    Download Sample
-                  </a>
                   <button
-                    onClick={() => {
-                      setSelectedDataset(previewModal.dataset);
-                      setPreviewModal({ show: false, dataset: null, fileUrl: null, isDecrypting: false, error: null });
-                    }}
-                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                    onClick={() => handlePurchaseAndDownload(purchaseModal.dataset!)}
+                    className="flex-1 bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 transition-colors"
                   >
-                    Purchase Full Dataset
+                    Download Dataset
                   </button>
                 </div>
               )}
